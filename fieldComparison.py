@@ -602,6 +602,14 @@ def gaussianSum(x,y):
 	r2 = np.array([.3*x_range,.7*y_range])
 	loc = np.array([x,y])
 	return 10*np.exp(-0.05*np.linalg.norm(loc-r1)**2)+15*np.exp(-0.1*np.linalg.norm(loc-r2)**2)
+
+def tagField(tagData,pos,t,time_step,sensorRange):
+	#last_ping=tagData[:,0],posx=tagData[:,1],posy=tagData[:,2],posz=tagData[:,3],delay=tagData[:,4],ID=tagData[:,5],bin=tagData[:,6]=tagData
+	#diff=tagData[:,1:3]-np.array([pos[0],pos[1]]) 
+	distance=np.linalg.norm(tagData[:,1:3]-np.array([pos[0],pos[1]]),axis=1)
+	pinging = np.logical_and((np.fmod(t,tagData[:,4])-(tagData[:,0]+tagData[:,4]))<=time_step,(np.fmod(t,tagData[:,4])-(tagData[:,0]+tagData[:,4]))>0)
+	dtSet= np.logical_and(distance<sensorRange,pinging)
+	return pinging,tagData[np.where(dtSet)[0],5],np.sum(dtSet)#pinging,detectionNum,detection set
 	
 density_map = np.array([0.1, 0.1, 0.4, 0.3, 0.2,
 			0.1, 0.3, 0.3, 0.1, 0.3,
@@ -610,14 +618,14 @@ density_map = np.array([0.1, 0.1, 0.4, 0.3, 0.2,
 			0.2, 0.3, 0.2, 0.1, 0.1])	
 #################################### simulation settings   ###################################
 N = 1000 #how many tags present
-simtime=1000 #max simulation time
+simtime=100 #max simulation time
 numAgents=1 #number of agents exploring
 sensorRange=2
 x_range=20.0 #grid size
 y_range=20.0
-spacing=(1,1) #spacing between points for visualizing fields
+spacing=(1,1)#(.5,.5) #spacing between points for visualizing fields
 searchMethods = ["MIDCA","SUSD","ERGODIC_DI","DEMO","ERGODIC_SI"]
-method = searchMethods[4]
+method = searchMethods[3]
 fields= ["tag","gassian sum","rosenbrock","rastrigin"]
 fieldMax = [(5.5,14,8),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5
 field = fields[0]
@@ -625,7 +633,7 @@ measurement_time = 2.0
 time_step=.5
 start_pos=(.05*x_range,.1*y_range)#
 show_only_when_pinging=True
-stopOnMax = True
+stopOnMax = False
 visualize = True
 syncronize = True
 logData=True
@@ -656,6 +664,7 @@ for i in range(N):
 E = Grid(taglist,x_range=x_range, y_range=y_range)
 if field == fields[0]:
 	taglist=E.loadTagList()#E.setMap(density_map)
+	tagData=np.genfromtxt("tags.csv",delimiter=",")
 	#E.saveTagList()
 for i in range(numAgents):
 	s= AcousticReciever(np.array([0,0,0]),sensorRange)
@@ -769,7 +778,7 @@ while t<=simtime:#or running: #change to better simulation stopping criteria
 		#srange=agent.sensor.range
 		if method==searchMethods[3] or method==searchMethods[0]:
 			wp_list[i], u = wp_track(np.array(pos), wp_list[i])
-			print(t,pos,u,latestMeas)
+			#print(t,pos,u,latestMeas)
 		if method == searchMethods[2] and syncronize:
 			u=doubleIntegratorErgodicControl(agent,updateGP)
 			#print(t,pos,u,latestMeas)
@@ -782,6 +791,8 @@ while t<=simtime:#or running: #change to better simulation stopping criteria
 				updateGP=False
 		state=simulate_dynamics(agent,u, [0,time_step],.1)
 		dets=agent.updateAgent(state,t)
+		pinging,detSet,dets2=tagField(tagData,pos,t,time_step,sensorRange)
+		print(t,dets,dets,detSet)
 		allDetectionData = agent.sensor.detectionList  # history of every tag detection. includes (tag ID,time,agent pos,bin)
 		det_count[i]+=dets
 		if field == fields[3]:
