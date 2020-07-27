@@ -607,9 +607,12 @@ def tagField(tagData,pos,t,time_step,sensorRange):
 	#last_ping=tagData[:,0],posx=tagData[:,1],posy=tagData[:,2],posz=tagData[:,3],delay=tagData[:,4],ID=tagData[:,5],bin=tagData[:,6]=tagData
 	#diff=tagData[:,1:3]-np.array([pos[0],pos[1]]) 
 	distance=np.linalg.norm(tagData[:,1:3]-np.array([pos[0],pos[1]]),axis=1)
-	pinging = np.logical_and((np.fmod(t,tagData[:,4])-(tagData[:,0]+tagData[:,4]))<=time_step,(np.fmod(t,tagData[:,4])-(tagData[:,0]+tagData[:,4]))>0)
+	eps=time_step/100.0
+	c1=(np.fmod(t,tagData[:,4]+eps)-(tagData[:,0]+tagData[:,4]))<time_step
+	c2=(np.fmod(t,tagData[:,4]+eps)>(tagData[:,0]+tagData[:,4]))
+	pinging = np.logical_and(c1,c2)
 	dtSet= np.logical_and(distance<sensorRange,pinging)
-	return pinging,tagData[np.where(dtSet)[0],5],np.sum(dtSet)#pinging,detectionNum,detection set
+	return tagData[np.where(pinging)[0],:],tagData[np.where(dtSet)[0],5],np.sum(dtSet)#pinging,detection set,detectionNum
 	
 density_map = np.array([0.1, 0.1, 0.4, 0.3, 0.2,
 			0.1, 0.3, 0.3, 0.1, 0.3,
@@ -618,22 +621,22 @@ density_map = np.array([0.1, 0.1, 0.4, 0.3, 0.2,
 			0.2, 0.3, 0.2, 0.1, 0.1])	
 #################################### simulation settings   ###################################
 N = 1000 #how many tags present
-simtime=100 #max simulation time
+simtime=1000 #max simulation time
 numAgents=1 #number of agents exploring
 sensorRange=2
 x_range=20.0 #grid size
 y_range=20.0
 spacing=(1,1)#(.5,.5) #spacing between points for visualizing fields
 searchMethods = ["MIDCA","SUSD","ERGODIC_DI","DEMO","ERGODIC_SI"]
-method = searchMethods[3]
+method = searchMethods[4]
 fields= ["tag","gassian sum","rosenbrock","rastrigin"]
 fieldMax = [(5.5,14,8),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5
-field = fields[0]
+field = fields[1]
 measurement_time = 2.0
 time_step=.5
 start_pos=(.05*x_range,.1*y_range)#
 show_only_when_pinging=True
-stopOnMax = False
+stopOnMax = True
 visualize = True
 syncronize = True
 logData=True
@@ -653,13 +656,13 @@ taglist=[]
 agentList=[]
 tagx=np.zeros(N)
 tagy=np.zeros(N)
-for i in range(N):
-	#taglist.append(AcousticTag(i,last_ping=np.random.randn()),ping_delay=max(2,30*np.random.randn())) # most realistic 
-	taglist.append(AcousticTag(i,last_ping=17*np.random.randn())) # more realistic (pings are not aligned in time)
+#for i in range(N):
+	#taglist.append(AcousticTag(i,last_ping=-np.random.rand()),ping_delay=max(2,30*np.random.randn())) # most realistic 
+#	taglist.append(AcousticTag(i,last_ping=-17*np.random.rand())) # more realistic (pings are not aligned in time)
 	#taglist.append(AcousticTag(i)) #better for understanding because pings are aligned in time and  all have same ping interval
-	x,y,_ = taglist[i].pos
-	tagx[i]=x
-	tagy[i]=y
+#	x,y,_ = taglist[i].pos
+#	tagx[i]=x
+#	tagy[i]=y
 	
 E = Grid(taglist,x_range=x_range, y_range=y_range)
 if field == fields[0]:
@@ -683,7 +686,7 @@ for i in range(numAgents):
 		agentList.append(Agent(np.array([start_pos[0],start_pos[1]]),s,E,dim=2))
 		agentList[i].dynamics=m1_step
 		
-for i in range(N):
+for i in range(len(taglist)):
 	x,y,_ = taglist[i].pos
 	tagx[i]=x
 	tagy[i]=y
@@ -791,10 +794,12 @@ while t<=simtime:#or running: #change to better simulation stopping criteria
 				updateGP=False
 		state=simulate_dynamics(agent,u, [0,time_step],.1)
 		dets=agent.updateAgent(state,t)
-		pinging,detSet,dets2=tagField(tagData,pos,t,time_step,sensorRange)
-		print(t,dets,dets,detSet)
-		allDetectionData = agent.sensor.detectionList  # history of every tag detection. includes (tag ID,time,agent pos,bin)
-		det_count[i]+=dets
+		pos=agent.getPos()
+		if field == fields[0]:
+			pinging,detSet,dets2=tagField(tagData,pos,t,time_step,sensorRange)
+			print(t,pinging.shape,dets,dets,detSet,agent.sensor.detectionSet)
+			allDetectionData = agent.sensor.detectionList  # history of every tag detection. includes (tag ID,time,agent pos,bin)
+			det_count[i]+=dets
 		if field == fields[3]:
 			latestMeas=rastrigin(pos[0],pos[1])
 			if last_meas+measurement_time<=t:
@@ -862,7 +867,7 @@ while t<=simtime:#or running: #change to better simulation stopping criteria
 run=False
 if method==searchMethods[2] or method==searchMethods[4]:
 	sock.send("end ".encode('utf-8'))
-
+#input('done')
 if field == fields[0]:
 	draw((tagx,tagy))
 	drawAgent((posx,posy),r=sensorRange)
