@@ -1,6 +1,8 @@
 CPP = g++
-PROJ = singleIntegrator
+#PROJ = singleIntegrator
 #PROJ = doubleIntegrator
+PROJ = singleIntegratorCellByCell
+#PROJ = doubleIntegratorCellByCell
 DEPS = $(PROJ).cpp
 LIBDIR = ./src
 INCDIR = ./include

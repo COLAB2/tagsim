@@ -12,12 +12,13 @@ def drawFig(Xdata,Ydata,heat,fig=1,colormap='inferno',label=''):
 	plt.contourf(Xdata, Ydata, heat, 20, cmap=colormap)# cmap='coolwarm'), cmap='RdGy')
 	cbar = plt.colorbar()
 	cbar.set_label(label)
-	plt.xlim([0, xrange])
-	plt.ylim([0, xrange])
-	plt.xticks(np.arange(0,xrange,xrange/20))
-	plt.yticks(np.arange(0,yrange,yrange/20))
+	plt.xlim([xrange_b, xrange])
+	plt.ylim([yrange_b, yrange])
+	plt.xticks(np.arange(xrange_b,xrange,xrange/20))
+	plt.yticks(np.arange(yrange_b,yrange,yrange/20))
 	plt.draw()
 	plt.pause(0.00001)
+
 	
 	
 fname="gp.csv"
@@ -26,6 +27,8 @@ fname="gp.csv"
 i=1
 xrange=1
 yrange=1
+xrange_b=1
+yrange_b=1
 while True:
 	#moddate=os.stat(fname)[8]
 	#print(os.path.exists(str(i)+fname),str(i)+fname)
@@ -41,8 +44,10 @@ while True:
 			var = gpdata[:,2]
 			Xdata = gpdata[:,3]
 			xrange=np.max(Xdata)
+			xrange_b=np.min(Xdata)
 			Ydata = gpdata[:,4]
 			yrange=np.max(Ydata)
+			yrange_b=np.min(Ydata)
 			spacing=int(np.sqrt(EIDvals.shape[0]))
 			EIDvals.shape=(spacing,spacing)
 			mean.shape=(spacing,spacing)
