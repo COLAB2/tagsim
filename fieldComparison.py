@@ -604,7 +604,6 @@ def singleIntegratorErgodicControl(agent,update,scale=None,offsets=None):
 			u=np.clip(np.array([np.cos(utemp), np.sin(utemp)]),-1,1)
 		return u
 
->>>>>>> 9968a3aea6c44f7e569d2dd7def8daa4ad771d38
 '''
 psuedo code
 create grid world
@@ -744,7 +743,7 @@ x_range=20.0 #grid size
 y_range=20.0
 spacing=(1,1)#(.5,.5) #spacing between points for visualizing fields
 searchMethods = ["MIDCA","SUSD","ERGODIC_DI","DEMO","ERGODIC_SI"]
-method = searchMethods[4]
+method = searchMethods[0]
 fields= ["tag","gassian sum","rosenbrock","rastrigin"]
 fieldMax = [(5.5,14,7),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5
 field = fields[0]
@@ -985,7 +984,6 @@ while t<=simtime:#or running: #change to better simulation stopping criteria
 		break
 
 
->>>>>>> 9968a3aea6c44f7e569d2dd7def8daa4ad771d38
 ################################################ end simulation loop ####################################
 ################################################ final plots       ######################################
 run=False
