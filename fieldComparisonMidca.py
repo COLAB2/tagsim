@@ -9,6 +9,8 @@ from AcousticReciever import AcousticReciever
 import socket
 import threading
 import traceback
+import sys
+
 
 wp_list = None
 allDetectionData = None
@@ -542,6 +544,317 @@ def singleIntegratorErgodicControl(agent,update):
             _,utemp=wp_track(agent.getPos(),np.array([x_range/2,y_range/2]))
             u=np.clip(np.array([np.cos(utemp), np.sin(utemp)]),-0.1,0.1)
         return u
+
+def MidcaIntegrator(agent,update):
+    global running, searchComplete, wp_list, E, det_count, agentList, run, t
+    run = True
+    st= agent.state
+    try:
+        if not update:
+            #sock.send(str.encode(str(round(st[0],1)/x_range)+" "+str(round(st[1],1)/x_range)+" "+str(t)+" "+"None "))
+            pass
+        else:
+            pass
+            #sock.send(str.encode(str(round(st[0],1)/x_range)+" "+str(round(st[1],1)/x_range)+" "+str(t)+" "+str(latestMeas)))
+    except:
+        run=False
+        t=simtime
+        return
+    # accept connections from outside
+    (clientsocket, address) = sock.accept()
+    data = clientsocket.recv(1024)
+    data = data.decode('utf-8')
+    cmd=data.split(',')
+    #print(cmd)
+    if cmd[0] == 'quit':
+        running = False
+        run = False
+        endSim = True
+    elif cmd[0] == 'start':
+        running = True
+    elif cmd[0] == 'moveTo':
+        x = int(cmd[1]) - 1
+        y = int(cmd[2]) - 1
+        center = np.array([x * x_range / 5.0, y * y_range / 5.0]) + np.array(
+            [.5 * x_range / 5.0, .5 * y_range / 5.0])
+        wp_list[0] = [center]
+    elif cmd[0] == 'moveToPhysicalPosition':
+        x = int(cmd[1]) - 1
+        y = int(cmd[2]) - 1
+        center = np.array([x, y])
+        wp_list[0] = [center]
+    elif cmd[0] == 'inCell':
+        agent = agentList[0]
+        pos = agent.getPos()
+        bin = E.getAbstractPos(pos[0], pos[1])
+        x = int(cmd[1])
+        y = int(cmd[2])
+        myx, myy = E.getCellXY(pos[0], pos[1])
+        bin2 = 5 * (y - 1) + (x - 1)
+        clientsocket.send(str.encode(str(x == myx and y == myy)))
+        # print(bin, bin2)
+    elif cmd[0] == 'time':
+        clientsocket.send(str.encode(str(t)))
+    elif cmd[0] == 'getCell':
+        agent = agentList[0]
+        pos = agent.getPos()
+        bin = E.getAbstractPos(pos[0], pos[1])
+        myx, myy = E.getCellXY(pos[0], pos[1])
+        clientsocket.send(str.encode(str(myx) + "," + str(myy)))
+    elif cmd[0] == 'search':
+        x = int(cmd[1]) - 1
+        y = int(cmd[2]) - 1
+        center = np.array([x * x_range / 5.0, y * y_range / 5.0]) + np.array(
+            [.5 * x_range / 5.0, .5 * y_range / 5.0])
+        wp_list[0] = search(wp_list[0], center)
+        searchComplete = False
+
+    elif cmd[0] == 'searchComplete':
+        clientsocket.send(str.encode(str(searchComplete)))
+
+    elif cmd[0] == 'get_tags':
+        agent = agentList[0]
+        bin = 5 * (int(cmd[2]) - 1) + (int(cmd[1]))
+        # print (bin)
+        count = 0
+        unique = []
+        for data in allDetectionData:
+            if (data[3] == bin) and (not data[0] in unique):
+                count = count + 1
+                unique.append(data[0])
+        clientsocket.send(str.encode(str(count)))
+
+    elif cmd[0] == 'get_measurement':
+        # allMeasurementData.append([latestMeas, [pos[0], pos[1]], bin])
+        # latestMeas, [pos0, pos1], bin
+        bin = 5 * (int(cmd[2]) - 1) + (int(cmd[1])) - 1
+        print (bin)
+        sum = 0
+        unique = []
+        for data in allMeasurementData:
+            if (data[3] == bin) and (not data[2] in unique):
+                sum += data[0]
+                unique.append(data[2])
+                clientsocket.send(str.encode(str(sum)))
+
+    elif cmd[0] == "get_adjacent_measurement":
+        agent = agentList[0]
+        factor = 2
+        xll = (int(cmd[1]) - 1) * factor * 2
+        yll = (int(cmd[2]) - 1) * factor * 2
+        pos = agent.getPos()
+        bin = E.getAbstractPos(pos[0], pos[1]) - 1
+        unique = []
+        count = [0, 0, 0, 0]
+        time = [[], [], [], []]
+        measured_data = [[], [], [], []]
+        total_count = 0
+
+        for data in allMeasurementData:  # tag ID,time,agent pos,bin
+            if (data[3] == bin) and (not data[2] in unique):
+                # print (data)
+                total_count += 1
+                unique.append(data[2])
+                # north
+                if data[2][1] > (yll + (factor * 1.50)):
+                    count[0] += data[0]
+                    measured_data[0].append(data[0])
+                    time[0].append(data[1])
+                # print ("north")
+
+                # south
+                if data[2][1] < (yll + (factor * .50)):
+                    count[1] += data[0]
+                    measured_data[1].append(data[0])
+                    time[1].append(data[1])
+                # print ("south")
+
+                # east
+                if data[2][0] > (xll + (factor * 1.50)):
+                    count[2] += data[0]
+                    measured_data[2].append(data[0])
+                    time[2].append(data[1])
+                # print ("east")
+
+                # west
+                if data[2][0] < (xll + (factor * .50)):
+                    count[3] += data[0]
+                    measured_data[3].append(data[0])
+                    time[3].append(data[1])
+                # print ("west")
+        # print ("time: ")
+        # print (time)
+        # print ("Measured_data : ")
+        # print (measured_data)
+        result = []
+
+        # north
+        avg_rate = find_max_7_values_avg_measurement(time[0], measured_data[0])
+        # print ("Average value")
+        # print (avg_rate)
+        result.append(avg_rate)
+
+        # south
+        avg_rate = find_max_7_values_avg_measurement(time[1], measured_data[1])
+        # print ("Average value")
+        # print (avg_rate)
+        result.append(avg_rate)
+
+        # east
+        avg_rate = find_max_7_values_avg_measurement(time[2], measured_data[2])
+        # print ("Average value")
+        # print (avg_rate)
+        result.append(avg_rate)
+
+        # west
+        avg_rate = find_max_7_values_avg_measurement(time[3], measured_data[3])
+        # print ("Average value")
+        # print (avg_rate)
+        result.append(avg_rate)
+
+        data_to_be_sent = ",".join(str(i) for i in result)
+        clientsocket.send(str.encode(data_to_be_sent))
+    elif cmd[0] == 'get_tags_adjacent':
+        agent = agentList[0]
+        factor = 2
+        xll = (int(cmd[1]) - 1) * factor * 2
+        yll = (int(cmd[2]) - 1) * factor * 2
+        pos = agent.getPos()
+        bin = E.getAbstractPos(pos[0], pos[1])
+        probability = []
+        unique = []
+        count = [0, 0, 0, 0]
+        time = [[], [], [], []]
+        total_count = 0
+
+        for data in allDetectionData:  # tag ID,time,agent pos,bin
+            if (data[3] == bin) and (not data[0] in unique):
+                total_count += 1
+                unique.append(data[0])
+                # north
+                if data[2][1] > (yll + (factor * 1.50)):
+                    count[0] += 1
+                    time[0].append(data[1])
+                # print ("north")
+
+                # south
+                if data[2][1] < (yll + (factor * .50)):
+                    count[1] += 1
+                    time[1].append(data[1])
+                # print ("south")
+
+                # east
+                if data[2][0] > (xll + (factor * 1.50)):
+                    count[2] += 1
+                    time[2].append(data[1])
+                # print ("east")
+
+                # west
+                if data[2][0] < (xll + (factor * .50)):
+                    count[3] += 1
+                    time[3].append(data[1])
+                # print ("west")
+
+        print (time)
+        print (count)
+        result = []
+
+        # north
+        avg_rate = find_max_5_values_avg(time[0])
+        # print ("Average value")
+        # print (avg_rate)
+        result.append(avg_rate)
+
+        # south
+        avg_rate = find_max_5_values_avg(time[1])
+        # print ("Average value")
+        # print (avg_rate)
+        result.append(avg_rate)
+
+        # east
+        avg_rate = find_max_5_values_avg(time[2])
+        # print ("Average value")
+        # print (avg_rate)
+        result.append(avg_rate)
+
+        # west
+        avg_rate = find_max_5_values_avg(time[3])
+        # print ("Average value")
+        # print (avg_rate)
+        result.append(avg_rate)
+
+        data_to_be_sent = ",".join(str(i) for i in result)
+        # print ("The data is : ")
+        # print (data_to_be_sent)
+        clientsocket.send(str.encode(data_to_be_sent))
+
+    elif cmd[0] == 'get_tags_adjacent_new':
+        agent = agentList[0]
+        factor = 2
+        xll = (int(cmd[1]) - 1) * factor * 2
+        yll = (int(cmd[2]) - 1) * factor * 2
+        pos = agent.getPos()
+        bin = E.getAbstractPos(pos[0], pos[1])
+        probability = []
+        unique = []
+        count = [0, 0, 0, 0]
+        time = [[], [], [], []]
+        total_count = 0
+
+        for data in allDetectionData:  # tag ID,time,agent pos,bin
+            if (data[3] == bin) and (not data[0] in unique):
+                total_count += 1
+                unique.append(data[0])
+                # north
+                if data[2][1] > (yll + (factor * 1.50)):
+                    count[0] += 1
+                    time[0].append(data[1])
+                # print ("north")
+
+                # south
+                if data[2][1] < (yll + (factor * .50)):
+                    count[1] += 1
+                    time[1].append(data[1])
+                # print ("south")
+
+                # east
+                if data[2][0] > (xll + (factor * 1.50)):
+                    count[2] += 1
+                    time[2].append(data[1])
+                # print ("east")
+
+                # west
+                if data[2][0] < (xll + (factor * .50)):
+                    count[3] += 1
+                    time[3].append(data[1])
+            # print ("west")
+
+        print (count)
+
+        data_to_be_sent = ",".join(str(i) for i in count)
+        # print ("The data is : ")
+        # print (data_to_be_sent)
+        clientsocket.send(str.encode(data_to_be_sent))
+
+    elif cmd[0] == 'cell_lambda':
+        agent = agentList[0]
+        if len(cmd) < 2:
+            pos = agent.getPos()
+            bin = E.getAbstractPos(pos[0], pos[1]) - 1
+            clientsocket.send(str.encode(str(agent.belief_map[bin])))
+        else:
+            # bin = E.getAbstractPos(int(cmd[1]), int(cmd[2])) - 1
+            bin = 5 * (int(cmd[1]) - 1) + (int(cmd[2])) - 1
+            clientsocket.send(str.encode(str(agent.belief_map[bin])))
+        det_count[0] = 0
+
+    clientsocket.close()
+
+    if len(cmd)>=1:
+        return
+
+
+
 '''
 psuedo code
 create grid world
@@ -673,7 +986,7 @@ density_map = np.array([0.1, 0.1, 0.4, 0.3, 0.2,
             0.3, 0.9, 0.3, 0.2, 0.1,
             0.2, 0.3, 0.2, 0.1, 0.1])
 #################################### simulation settings   ###################################
-N = 1000 #how many tags present
+N = 200 #how many tags present
 simtime=1000 #max simulation time
 numAgents=1 #number of agents exploring
 sensorRange=2
@@ -683,15 +996,38 @@ spacing=(1,1)#(.5,.5) #spacing between points for visualizing fields
 searchMethods = ["MIDCA","SUSD","ERGODIC_DI","DEMO","ERGODIC_SI"]
 method = searchMethods[0]
 fields= ["tag","gassian sum","rosenbrock","rastrigin"]
-#fieldMax = [(5.5,14,50),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 # for tag_1000
-#fieldMax = [(5.5,14,30),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 # for tag_500
-fieldMax = [(5.5,14,7),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 # for tag_100
+#fieldMax = [(5.5,14,1.5),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 # for tag_100
+fieldMax = [(5.5,14,2),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 # for tag_200
+#fieldMax = [(5.5,14,4.1),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 # for tag_500
+#fieldMax = [(5.5,14,6),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 # for tag_1000
 field = fields[0]
 measurement_time = 2.0
 time_step=.5
 #start_pos=(.05*x_range,.1*y_range)
-start_pos = (7.813659480510352751e+00, 3.109500212981364253e+00)
-show_only_when_pinging=True
+start_pos = [(4.361675414742551382e+00, 1.458277069766090328e+01),
+             (1.545820006278236569e+01, 6.457247090829543623e+00),
+             (6.295868290928718913e-01, 7.231587833833630796e+00),
+             (1.125840547944832792e+01, 4.275635236417141272e-01),
+             (1.547922926485634232e+00, 4.900255414078060312e+00),
+             (1.510704267728113237e+01, 1.783478215173388648e+01),
+             (2.204755346558018303e-01, 6.173268062869025741e+00),
+             (4.958469349586305697e+00, 4.716507947006558510e+00),
+             (1.479491107030286301e+01, 1.459564048874953457e+01),
+             (3.171471926407209985e+00, 1.005076470181938575e+01),
+             (1.234584097168078287e+01, 6.461087057506860631e+00),
+             (1.067132595610898349e+01, 1.024013704378120160e+01),
+             (2.627585809888457469e+00, 1.260149797724160514e+01),
+             (4.046709532503120599e+00, 1.067246776102524386e+01),
+             (1.408113055270808722e+01, 1.423915807887335561e+01),
+             (1.414334725656964054e+01, 1.920331742981397838e+01),
+             (8.702805949851414979e+00, 1.927219991502269991e+01),
+             (1.902459420257870448e+01, 1.459444585671132621e+01),
+             (1.071787563199973192e+01, 6.014617171762742132e+00),
+             (7.813659480510352751e+00, 3.109500212981364253e+00)
+             ]
+
+start_pos = start_pos[int(sys.argv[1])]
+show_only_when_pinging=False
 stopOnMax = True
 visualize = True
 syncronize = True
@@ -712,19 +1048,21 @@ taglist=[]
 agentList=[]
 tagx=np.zeros(N)
 tagy=np.zeros(N)
-#for i in range(N):
+"""
+for i in range(N):
     #taglist.append(AcousticTag(i,last_ping=-np.random.rand()),ping_delay=max(2,30*np.random.randn())) # most realistic
-#	#taglist.append(AcousticTag(i,last_ping=-17*np.random.rand())) # more realistic (pings are not aligned in time)
+	taglist.append(AcousticTag(i,last_ping=-17*np.random.rand())) # more realistic (pings are not aligned in time)
 #	taglist.append(AcousticTag(i)) #better for understanding because pings are aligned in time and  all have same ping interval
-#	x,y,_ = taglist[i].pos
-#	tagx[i]=x
-#	tagy[i]=y
+	x,y,_ = taglist[i].pos
+	tagx[i]=x
+	tagy[i]=y
+"""
 
 E = Grid(taglist,x_range=x_range, y_range=y_range)
 if field == fields[0]:
-    taglist= E.loadTagList("tags_old_1000") #E.setMap(density_map)
-    tagData=np.genfromtxt("tags_old_1000.csv",delimiter=",")
-    #E.saveTagList()
+    taglist= E.loadTagList("tags_200") #E.setMap(density_map)
+    tagData=np.genfromtxt("tags_200.csv",delimiter=",")
+    #E.saveTagList("tags")
 for i in range(numAgents):
     s= AcousticReciever(np.array([0,0,0]),sensorRange)
     if method == searchMethods[2]:
@@ -799,7 +1137,15 @@ if method == searchMethods[4] and not syncronize:
     xthread = threading.Thread(target=ErgodicComLink2)
     xthread.start()
 
-if method == searchMethods[0]:
+if method == searchMethods[0] and syncronize:
+    # now do something with the clientsocket
+    # in this case, we'll pretend this is a threaded server
+    sock.bind(('127.0.0.1', 5700))
+    sock.listen(5)
+
+
+
+else:
     # now do something with the clientsocket
     # in this case, we'll pretend this is a threaded server
     xthread = threading.Thread(target=MidcaComLink)
@@ -837,6 +1183,11 @@ while t<=simtime:#or running: #change to better simulation stopping criteria
         #srange=agent.sensor.range
         if method==searchMethods[3] or method==searchMethods[0]:
             wp_list[i], u = wp_track(np.array(pos), wp_list[i])
+            MidcaIntegrator(agent, updateGP)
+            #print(t, pos, u, latestMeas)
+            if updateGP:
+                updateGP = False
+
             #print(t,pos,u,latestMeas)
         if method == searchMethods[2] and syncronize:
             u=doubleIntegratorErgodicControl(agent,updateGP)
@@ -844,10 +1195,12 @@ while t<=simtime:#or running: #change to better simulation stopping criteria
             if updateGP:
                 updateGP=False
         if method == searchMethods[4] and syncronize:
-            u=singleIntegratorErgodicControl(agent,updateGP)
-            print(t,pos,u,latestMeas)
+            u = singleIntegratorErgodicControl(agent, updateGP)
+            print(t, pos, u, latestMeas)
             if updateGP:
-                updateGP=False
+                updateGP = False
+
+
         state=simulate_dynamics(agent,u, [0,time_step],.1)
         dets=agent.updateAgent(state,t)
         pos=agent.getPos()
@@ -976,7 +1329,9 @@ if logData:
     f.write(field+","+str(t)+","+str(agent.getPos())+","+str(latestMeas)+"\n")
     f.close()
 print(str(t)+","+str(agent.getPos())+","+str(latestMeas),", max val: ",maxMeas)
-input('done')
+sock.close()
+print('done')
+
 
 
 

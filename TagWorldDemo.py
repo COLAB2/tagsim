@@ -1,11 +1,16 @@
 import socket
 import time
+import sys
 
 class TagWorld():
     def __init__(self):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.connect(('127.0.0.1', 5700))
-        self.sock.settimeout(1)
+        try:
+            self.sock.connect(('127.0.0.1', 5700))
+        except:
+            sys.exit()
+            self.sock.close()
+        #self.sock.settimeout(1)
 
     def runSim(self):
         self.sock.send(str.encode(str('start')))
@@ -22,6 +27,7 @@ class TagWorld():
         data = [float(each) for each in data]
         return data
 
+
     def getAdjacentMeasurement(self, position):
         msg = "get_adjacent_measurement," + str(position[0]+1) + "," + str(position[1]+1)
         self.sock.send(str.encode(str(msg)))
@@ -30,6 +36,7 @@ class TagWorld():
         data = data.split(",")
         data = [float(each) for each in data]
         return data
+
 
     def UpdateUncertainity(self, mode, radius):
         msg = "updateUncertainity," + str(mode) + "," + str(radius)
@@ -154,9 +161,38 @@ class TagWorld():
         self.sock.close()
 
 
+def move_and_search(position, position1):
+
+    tag = TagWorld()
+    tag.move_cell([0, 0], position)
+
+    incell = True
+    while (incell):
+        tag = TagWorld()
+        if (tag.get_cell() == position1):
+            break
+        time.sleep(0.01)
+
+    tag = TagWorld()
+    tag.search(position)
+
+    search = True
+    while (search):
+        tag = TagWorld()
+        confirmation = tag.searchComplete()
+        # print(confirmation)
+        if confirmation == str(True):
+            break
+        time.sleep(0.01)
+
+    tag = TagWorld()
+    print (tag.get_tags(position))
+
+
+
 if __name__ == "__main__":
         import time
-        """"
+        """
         tag = TagWorld()
         tag.runSim()
 
@@ -164,7 +200,7 @@ if __name__ == "__main__":
         tag = TagWorld()
         tag.move_cell([0,0], [1,3])
 
-        """
+        
 
 
         tag = TagWorld()
@@ -185,4 +221,42 @@ if __name__ == "__main__":
         #tag.UpdateUncertainity("High", 100)
         #tag.UpdateUncertainity("Med", 50)
         #tag.UpdateSurfstatus("ascend")
+        """
+
+        firstcelltags = None
+        tag = TagWorld()
+        tag.runSim()
+
+
+        tag = TagWorld()
+        tag.runSim()
+
+
+        #time.sleep(0.1)
+
+        move_and_search([2,0] , "2,0")
+        move_and_search([3,0] , "3,0")
+        move_and_search([2,1] , "2,1")
+        move_and_search([1,0] , "1,0")
+        move_and_search([1,1] , "1,1")
+        move_and_search([2,2] , "2,2")
+        move_and_search([1,2] , "1,2")
+        move_and_search([1,3] , "1,3")
+
+
+
+        tag = TagWorld()
+        tag.endSim()
+
+
+
+
+
+
+
+
+
+
+
+
 

@@ -1,6 +1,6 @@
 import numpy as np
 class AcousticTag():
-    def __init__(self,ID,ping_delay=0,last_ping=0):
+    def __init__(self,ID,ping_delay=17,last_ping=0):
         self.last_ping=last_ping
         self.pos = np.array([0,0,0])
         self.delay=ping_delay

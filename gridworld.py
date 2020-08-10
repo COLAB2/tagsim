@@ -88,7 +88,7 @@ class Grid:
         from AcousticTag import AcousticTag
         for line in f.readlines():
             last_ping,posx,posy,posz,delay,ID,bin=line.split(',')
-            tag = AcousticTag(ID,last_ping=float(0),ping_delay=float(0))
+            tag = AcousticTag(ID,last_ping=float(last_ping),ping_delay=float(delay))
             tag.pos=np.array([float(posx),float(posy),float(posz)])
             tag.bin=bin
             taglist.append(tag)
