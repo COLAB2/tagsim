@@ -10,6 +10,7 @@ import socket
 import threading
 
 import traceback
+import sys
 
 wp_list = None
 
@@ -814,8 +815,8 @@ def MidcaIntegrator(agent,update):
                     time[3].append(data[1])
                 # print ("west")
 
-        print (time)
-        print (count)
+        #print (time)
+        #print (count)
         result = []
 
         # north
@@ -1054,13 +1055,14 @@ spacing=(1,1)#(.5,.5) #spacing between points for visualizing fields
 searchMethods = ["MIDCA","SUSD","ERGODIC_DI","DEMO","ERGODIC_SI"]
 method = searchMethods[0]
 fields= ["tag","gassian sum","rosenbrock","rastrigin"]
-fieldMax = [(5.5,14,7),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5
+#fieldMax = [(5.5,14,1.5),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 #100
+fieldMax = [(5.5,14,4),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 #500
+#fieldMax = [(5.5,14,7),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 #1000
 field = fields[0]
-fieldname="tags_500"
+fieldname="/Users/sravyakondrakunta/Documents/git/GracegridMIDCA/midca/domains/nbeacons/simulator/tags_500"
 measurement_time = 2.0
 time_step=.5
 #start_pos=(.95*x_range,.9*y_range)#(.05*x_range,.1*y_range)#
-"""
 start_pos = [(4.361675414742551382e+00, 1.458277069766090328e+01),
              (1.545820006278236569e+01, 6.457247090829543623e+00),
              (6.295868290928718913e-01, 7.231587833833630796e+00),
@@ -1082,13 +1084,15 @@ start_pos = [(4.361675414742551382e+00, 1.458277069766090328e+01),
              (1.071787563199973192e+01, 6.014617171762742132e+00),
              (7.813659480510352751e+00, 3.109500212981364253e+00)
              ]
-"""
-start_pos = (1.545820006278236569e+01, 6.457247090829543623e+00)
+print (int(sys.argv[1]))
+print (len(start_pos))
+
+start_pos = start_pos[int(sys.argv[1])]
 show_only_when_pinging=False
-stopOnMax = False
+stopOnMax = True
 visualize = True
 syncronize = True
-logData=False
+logData=True
 ###############################################################################################
 
 t=0
@@ -1290,6 +1294,13 @@ while t<=simtime:#or running: #change to better simulation stopping criteria
                 latestMeas=rate_meas
                 if latestMeas >= fieldMax[0][2]:
                     endSim=True
+
+                # to stop in cell
+                #pos = agent.getPos()
+                #myx, myy = E.getCellXY(pos[0], pos[1])
+                #if myx == 2 and myy == 4:
+                #    endSim = True
+
                 agent.belief_count[bin]+=1
                 agent.belief_map[bin]= iterative_average(rate_meas,agent.belief_count[bin],round(agent.belief_map[bin],3))  #iteratively average rate measurement
                 if len(agent.sensor.detectionSet)>0:
@@ -1299,7 +1310,7 @@ while t<=simtime:#or running: #change to better simulation stopping criteria
         posx[i]=pos[0]
         posy[i]=pos[1]
     plt.clf()
-    print(t,pos,u,latestMeas)
+    #print(t,pos,u,latestMeas)
     if last_meas+measurement_time<=t:
         last_meas=t
     if field == fields[0]:
@@ -1380,11 +1391,11 @@ plt.yticks(np.arange(0,y_range,spacing[1]))
 plt.draw()
 plt.pause(0.00001)
 if logData:
-    f=open("log.txt",'+a')
+    f=open("log.txt",'a')
     f.write(field+","+str(t)+","+str(agent.getPos())+","+str(latestMeas)+"\n")
     f.close()
 print(str(t)+","+str(agent.getPos())+","+str(latestMeas),", max val: ",maxMeas)
-input('done')
+print('done')
 
 
 
