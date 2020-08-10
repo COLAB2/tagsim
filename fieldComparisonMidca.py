@@ -986,7 +986,7 @@ density_map = np.array([0.1, 0.1, 0.4, 0.3, 0.2,
             0.3, 0.9, 0.3, 0.2, 0.1,
             0.2, 0.3, 0.2, 0.1, 0.1])
 #################################### simulation settings   ###################################
-N = 200 #how many tags present
+N = 1000 #how many tags present
 simtime=1000 #max simulation time
 numAgents=1 #number of agents exploring
 sensorRange=2
@@ -997,13 +997,14 @@ searchMethods = ["MIDCA","SUSD","ERGODIC_DI","DEMO","ERGODIC_SI"]
 method = searchMethods[0]
 fields= ["tag","gassian sum","rosenbrock","rastrigin"]
 #fieldMax = [(5.5,14,1.5),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 # for tag_100
-fieldMax = [(5.5,14,2),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 # for tag_200
+#fieldMax = [(5.5,14,2),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 # for tag_200
 #fieldMax = [(5.5,14,4.1),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 # for tag_500
-#fieldMax = [(5.5,14,6),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 # for tag_1000
+fieldMax = [(5.5,14,6),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 # for tag_1000
 field = fields[0]
 measurement_time = 2.0
 time_step=.5
 #start_pos=(.05*x_range,.1*y_range)
+"""
 start_pos = [(4.361675414742551382e+00, 1.458277069766090328e+01),
              (1.545820006278236569e+01, 6.457247090829543623e+00),
              (6.295868290928718913e-01, 7.231587833833630796e+00),
@@ -1025,8 +1026,8 @@ start_pos = [(4.361675414742551382e+00, 1.458277069766090328e+01),
              (1.071787563199973192e+01, 6.014617171762742132e+00),
              (7.813659480510352751e+00, 3.109500212981364253e+00)
              ]
-
-start_pos = start_pos[int(sys.argv[1])]
+"""
+start_pos = (1.545820006278236569e+01, 6.457247090829543623e+00)
 show_only_when_pinging=False
 stopOnMax = True
 visualize = True
@@ -1060,8 +1061,8 @@ for i in range(N):
 
 E = Grid(taglist,x_range=x_range, y_range=y_range)
 if field == fields[0]:
-    taglist= E.loadTagList("tags_200") #E.setMap(density_map)
-    tagData=np.genfromtxt("tags_200.csv",delimiter=",")
+    taglist= E.loadTagList("testField1_1000") #E.setMap(density_map)
+    tagData=np.genfromtxt("testField1_1000.csv",delimiter=",")
     #E.saveTagList("tags")
 for i in range(numAgents):
     s= AcousticReciever(np.array([0,0,0]),sensorRange)
