@@ -8,9 +8,11 @@ from Agent import Agent
 from AcousticReciever import AcousticReciever
 import socket
 import threading
+
 import traceback
 
 wp_list = None
+
 allDetectionData = None
 allMeasurementData = []
 t = 0
@@ -30,7 +32,7 @@ def find_max_5_values_avg(time):
     if values:
         values.sort(reverse=True)
         #print (values[:5])
-        #print (sum(values[:5]))					   
+        #print (sum(values[:5]))
         return float(sum(values[:7])) / 7
     else:
         return 0
@@ -53,9 +55,9 @@ def find_max_7_values_avg_measurement(time, data):
     else:
         return 0
 def MidcaComLink():
-    global running, searchComplete, wp_list, agent, E, det_count, agentList
+    global running, searchComplete, wp_list, agent, E, det_count, agentList, off, sc, searchMIDCAErgodic
     run = True
-    
+
     # create an INET, STREAMing socket
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     # bind the socket to a public host, and a well-known port
@@ -69,14 +71,14 @@ def MidcaComLink():
         try:
             clientsocket, address = sock.accept()
             data = clientsocket.recv(1024)
-            
+
             data = data.decode('utf-8')
             cmd = data.split(',')
             #print(cmd)
             if cmd[0] == 'quit':
                 running = False
                 run = False
-                endSim = True		 
+                endSim = True
             if cmd[0] == 'start':
                 running = True
             if cmd[0] == 'moveTo':
@@ -100,7 +102,7 @@ def MidcaComLink():
                 clientsocket.send(str.encode(str(x == myx and y == myy)))
                 #print(bin, bin2)
             if cmd[0] == 'time':
-                clientsocket.send(str.encode(str(t)))													 
+                clientsocket.send(str.encode(str(t)))
             if cmd[0] == 'getCell':
                 agent = agentList[0]
                 pos = agent.getPos()
@@ -113,6 +115,20 @@ def MidcaComLink():
                 center = np.array([x * x_range/5.0, y * y_range/5.0]) + np.array([.5*x_range/5.0, .5*y_range/5.0])
                 wp_list[0] = search(wp_list[0], center)
                 searchComplete = False
+
+            if cmd[0] == 'searchErgodic':
+                x = int(cmd[1]) - 1
+                y = int(cmd[2]) - 1
+                off = np.array([x * x_range/5.0, y * y_range/5.0])
+                sc=x_range/5.0
+                searchMIDCAErgodic=True
+                if len(cmd)>=4:
+                    sc = xrange if cmd[3]=='fullGrid' else x_range/5.0
+                #searchComplete = False
+
+            if cmd[0] == 'quitSearchErgodic':
+                searchMIDCAErgodic=False
+                searchComplete = True
 
             if cmd[0] == 'searchComplete':
                 clientsocket.send(str.encode(str(searchComplete)))
@@ -127,7 +143,7 @@ def MidcaComLink():
                     if (data[3] == bin) and (not data[0] in unique):
                         count = count + 1
                         unique.append(data[0])
-                clientsocket.send(str.encode(str(count)))							  
+                clientsocket.send(str.encode(str(count)))
 
             if cmd[0] == 'get_measurement':
                 #allMeasurementData.append([latestMeas, [pos[0], pos[1]], bin])
@@ -222,7 +238,7 @@ def MidcaComLink():
                 clientsocket.send(str.encode(data_to_be_sent))
             if cmd[0] == 'get_tags_adjacent':
                 agent = agentList[0]
-                factor = 2		  
+                factor = 2
                 xll = (int(cmd[1]) - 1) * factor * 2
                 yll = (int(cmd[2]) - 1) * factor * 2
                 pos = agent.getPos()
@@ -244,7 +260,7 @@ def MidcaComLink():
                         # print ("north")
 
                         # south
-                        if data[2][1] < (yll + (factor * .50)):
+                        if data[2][1] (yll + (factor * .50)):
                             count[1] += 1
                             time[1].append(data[1])
                         # print ("south")
@@ -291,7 +307,7 @@ def MidcaComLink():
 
                 data_to_be_sent = ",".join(str(i) for i in result)
                 #print ("The data is : ")
-                #print (data_to_be_sent)						
+                #print (data_to_be_sent)
                 clientsocket.send(str.encode(data_to_be_sent))
 
                 """
@@ -500,48 +516,95 @@ def ErgodicComLink2():
             print(t,round(st[0],1),round(st[1],1),u)
 
 def doubleIntegratorErgodicControl(agent,update):
-    global run,t
-    st=agent.state
-    try:
-        if not update:
-            sock.send(str.encode(str(round(st[0],1)/x_range)+" "+str(round(st[1],1)/x_range)+" "+str(st[2])+" "+str(st[3])+" "+str(t)+" "+"None "))
-        else:
-            sock.send(str.encode(str(round(st[0],1)/x_range)+" "+str(round(st[1],1)/x_range)+" "+str(st[2])+" "+str(st[3])+" "+str(t)+" "+str(latestMeas)))
-    except:
-        run=False
-        t=simtime
-        return
-    data = sock.recv(1024)
-    data = data.decode('utf-8')
-    cmd=data.split(',')
-    if len(cmd)>1:
-        u=(float(cmd[0]),float(cmd[1]))
-        if st[0]>x_range or st[0]<0 or st[1]<0 or st[1]>y_range:
-            _,utemp=wp_track(agent.getPos(),np.array([x_range/2,y_range/2]))
-            u=np.clip(np.array([np.cos(utemp), np.sin(utemp)]),-0.1,0.1)
-        return u
+	global run,t
+	st=agent.state
+	try:
+		if not update:
+			sock.send(str.encode(str(round(st[0],1)/x_range)+" "+str(round(st[1],1)/x_range)+" "+str(st[2])+" "+str(st[3])+" "+str(t)+" "+"None "))
+		else:
+			sock.send(str.encode(str(round(st[0],1)/x_range)+" "+str(round(st[1],1)/x_range)+" "+str(st[2])+" "+str(st[3])+" "+str(t)+" "+str(latestMeas)))
+	except:
+		run=False
+		t=simtime
+		return
+	data = sock.recv(1024)
+	data = data.decode('utf-8')
+	cmd=data.split(',')
+	if len(cmd)>1:
+		u=(float(cmd[0]),float(cmd[1]))
+		if st[0]>x_range or st[0]<0 or st[1]<0 or st[1]>y_range:
+			_,utemp=wp_track(agent.getPos(),np.array([x_range/2,y_range/2]))
+			u=np.clip(np.array([np.cos(utemp), np.sin(utemp)]),-0.1,0.1)
+		return u
+def doubleIntegratorErgodicControl(agent,update,scale=None,offsets=None):
+	global run,t
+	st=agent.state
+	if scale!=None:
+		sock.send(str.encode("change_scale "+str(scale)+"\n "))
+		read
+	else:
+		scale=x_range
+	if offsets!=None:
+		sock.send(str.encode("offset "+str(offsets[0])+" "+str(offsets[1])+"\n "))
+	else:
+		offsets=(0,0)
+	try:
+		if not update:
+			sock.send(str.encode(str((round(st[0],1)-offsets[0])/scale)+" "+str((round(st[1],1)-offsets[1])/scale)+" "+str(st[2])+" "+str(st[3])+" "+str(t)+" "+"None "))
+		else:
+			sock.send(str.encode(str((round(st[0],1)-offsets[0])/scale)+" "+str((round(st[1],1)-offsets[1])/scale)+" "+str(st[2])+" "+str(st[3])+" "+str(t)+" "+str(latestMeas)))
+	except:
+		run=False
+		t=simtime
+		return
+	data = sock.recv(1024)
+	data = data.decode('utf-8')
+	cmd=data.split(',')
+	if len(cmd)>1:
+		u=(float(cmd[0]),float(cmd[1]))
+		if st[0]>offsets[0]+scale or st[0]<offsets[0] or st[1]<offsets[1] or st[1]>offsets[1]+scale:
+			_,utemp=wp_track(agent.getPos(),np.array([[(offsets[0]+scale)/2,(offsets[1]+scale)/2]]))
+			u=np.clip(np.array([np.cos(utemp), np.sin(utemp)]),-0.5,0.5)
+		return u
 
-def singleIntegratorErgodicControl(agent,update):
-    global run,t
-    st=agent.state
-    try:
-        if not update:
-            sock.send(str.encode(str(round(st[0],1)/x_range)+" "+str(round(st[1],1)/x_range)+" "+str(t)+" "+"None "))
-        else:
-            sock.send(str.encode(str(round(st[0],1)/x_range)+" "+str(round(st[1],1)/x_range)+" "+str(t)+" "+str(latestMeas)))
-    except:
-        run=False
-        t=simtime
-        return
-    data = sock.recv(1024)
-    data = data.decode('utf-8')
-    cmd=data.split(',')
-    if len(cmd)>1:
-        u=(float(cmd[0]),float(cmd[1]))
-        if st[0]>x_range or st[0]<0 or st[1]<0 or st[1]>y_range:
-            _,utemp=wp_track(agent.getPos(),np.array([x_range/2,y_range/2]))
-            u=np.clip(np.array([np.cos(utemp), np.sin(utemp)]),-0.1,0.1)
-        return u
+def singleIntegratorErgodicControl(agent,update,scale=None,offsets=None):
+	global run,t,current_scale,current_offsets
+	st=agent.state
+	if scale!=None:
+		if current_scale != scale:
+			sock.send(str.encode("change_scale "+str(scale)))
+			confirm=sock.recv(1024)
+			current_scale = scale if "confirm" in confirm.decode('utf-8') else x_range
+	else:
+		scale=x_range
+	if offsets!=None:
+		if current_offsets != offsets:
+			sock.send(str.encode("offset "+str(offsets[0])+" "+str(offsets[1])+"\0"))
+			confirm=sock.recv(1024)
+			current_offsets = offsets if "confirm" in confirm.decode('utf-8') else (0,0)
+	else:
+		offsets=(0,0)
+	try:
+		if not update:
+			sock.send(str.encode(str((round(st[0],1)-offsets[0])/scale)+" "+str((round(st[1],1)-offsets[1])/scale)+" "+str(t)+" "+"None "))
+		else:
+			sock.send(str.encode(str((round(st[0],1)-offsets[0])/scale)+" "+str((round(st[1],1)-offsets[1])/scale)+" "+str(t)+" "+str(latestMeas)))
+	except:
+		run=False
+		t=simtime
+		return
+	data = sock.recv(1024)
+	data = data.decode('utf-8')
+	cmd=data.split(',')
+	print(data)
+	if len(cmd)>1:
+		u=(float(cmd[0]),float(cmd[1]))
+		if st[0]>offsets[0]+scale or st[0]<offsets[0] or st[1]<offsets[1] or st[1]>offsets[1]+scale:
+			_,utemp=wp_track(agent.getPos(),np.array([[offsets[0]+scale/2.0,offsets[1]+scale/2.0]]))
+			u=np.clip(np.array([np.cos(utemp), np.sin(utemp)]),-1,1)
+		return u
+
+>>>>>>> 9968a3aea6c44f7e569d2dd7def8daa4ad771d38
 '''
 psuedo code
 create grid world
@@ -563,7 +626,7 @@ def draw(x):
     plt.ylim([0, E.y_range])
     plt.xticks(np.arange(0,E.x_range,E.x_range/5.0))
     plt.yticks(np.arange(0,E.y_range,E.y_range/5.0))
-    
+
     plt.draw()
 
 
@@ -581,7 +644,7 @@ def drawAgent(x,r=None):
     plt.ylim([0, E.y_range])
     plt.xticks(np.arange(0,E.x_range,E.x_range/5.0))
     plt.yticks(np.arange(0,E.y_range,E.y_range/5.0))
-    
+
     plt.draw()
 
 def iterative_average(x,n,ave):
@@ -615,14 +678,14 @@ def search(wp_list,X):
     wp_list.append(np.array(X) + np.array([-offset, offset]))
     wp_list.append(np.array(X))
     return wp_list
-                   
+
 def wp_track(x,wp_list):
     global  searchComplete
     e = np.array(wp_list[0])-x
     if np.linalg.norm(e) < x_range/50.0 and len(wp_list) > 1:
         #print(wp_list)
         del wp_list[0]
-                   
+
     if len(wp_list) == 1:
         searchComplete=True
     return wp_list, 1*np.arctan2(e[1],e[0])
@@ -681,21 +744,19 @@ x_range=20.0 #grid size
 y_range=20.0
 spacing=(1,1)#(.5,.5) #spacing between points for visualizing fields
 searchMethods = ["MIDCA","SUSD","ERGODIC_DI","DEMO","ERGODIC_SI"]
-method = searchMethods[0]
+method = searchMethods[4]
 fields= ["tag","gassian sum","rosenbrock","rastrigin"]
-#fieldMax = [(5.5,14,50),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 # for tag_1000
-#fieldMax = [(5.5,14,30),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 # for tag_500
-fieldMax = [(5.5,14,7),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 # for tag_100
+fieldMax = [(5.5,14,7),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5
 field = fields[0]
+fieldname="tags_1000"
 measurement_time = 2.0
 time_step=.5
-#start_pos=(.05*x_range,.1*y_range)
-start_pos = (7.813659480510352751e+00, 3.109500212981364253e+00)
+start_pos=(.95*x_range,.9*y_range)#(.05*x_range,.1*y_range)#
 show_only_when_pinging=True
-stopOnMax = True
+stopOnMax = False
 visualize = True
 syncronize = True
-logData=True
+logData=False
 ###############################################################################################
 
 t=0
@@ -704,8 +765,10 @@ run=False
 running=False
 searchComplete=False
 updateGP=False
-
+searchMIDCAErgodic=False
 latestMeas=0
+sc=x_range
+off=(0,0)
 u=0
 
 taglist=[]
@@ -713,18 +776,18 @@ agentList=[]
 tagx=np.zeros(N)
 tagy=np.zeros(N)
 #for i in range(N):
-    #taglist.append(AcousticTag(i,last_ping=-np.random.rand()),ping_delay=max(2,30*np.random.randn())) # most realistic
-#	#taglist.append(AcousticTag(i,last_ping=-17*np.random.rand())) # more realistic (pings are not aligned in time)
-#	taglist.append(AcousticTag(i)) #better for understanding because pings are aligned in time and  all have same ping interval
+	#taglist.append(AcousticTag(i,last_ping=-np.random.rand()),ping_delay=max(2,30*np.random.randn())) # most realistic
+#	taglist.append(AcousticTag(i,last_ping=-17*np.random.rand())) # more realistic (pings are not aligned in time)
+	#taglist.append(AcousticTag(i)) #better for understanding because pings are aligned in time and  all have same ping interval
 #	x,y,_ = taglist[i].pos
 #	tagx[i]=x
 #	tagy[i]=y
 
 E = Grid(taglist,x_range=x_range, y_range=y_range)
 if field == fields[0]:
-    taglist= E.loadTagList("tags_old_1000") #E.setMap(density_map)
-    tagData=np.genfromtxt("tags_old_1000.csv",delimiter=",")
-    #E.saveTagList()
+	taglist= E.loadTagList(fieldname) #E.setMap(density_map)
+	tagData=np.genfromtxt(fieldname+".csv",delimiter=",")
+	#E.saveTagList()
 for i in range(numAgents):
     s= AcousticReciever(np.array([0,0,0]),sensorRange)
     if method == searchMethods[2]:
@@ -825,99 +888,104 @@ det_count=[0,0,0]
 endSim=False
 maxMeas=0
 while t<=simtime:#or running: #change to better simulation stopping criteria 
-    posx=np.zeros(numAgents)
-    posy=np.zeros(numAgents)
-    pinging_x =np.zeros(1)
-    pinging_y =np.zeros(1)
-    #print(t)
-    for i in range(len(agentList)):
-        agent=agentList[i]
-        pos=agent.getPos()
-        #state = agent.getPos()#
-        #srange=agent.sensor.range
-        if method==searchMethods[3] or method==searchMethods[0]:
-            wp_list[i], u = wp_track(np.array(pos), wp_list[i])
-            #print(t,pos,u,latestMeas)
-        if method == searchMethods[2] and syncronize:
-            u=doubleIntegratorErgodicControl(agent,updateGP)
-            #print(t,pos,u,latestMeas)
-            if updateGP:
-                updateGP=False
-        if method == searchMethods[4] and syncronize:
-            u=singleIntegratorErgodicControl(agent,updateGP)
-            print(t,pos,u,latestMeas)
-            if updateGP:
-                updateGP=False
-        state=simulate_dynamics(agent,u, [0,time_step],.1)
-        dets=agent.updateAgent(state,t)
-        pos=agent.getPos()
-        if field == fields[0]:
-            pinging,detSet,dets2=tagField(tagData,pos,t,time_step,sensorRange)
-            #print(t,pinging.shape,dets,dets,detSet,agent.sensor.detectionSet)
-            allDetectionData = agent.sensor.detectionList  # history of every tag detection. includes (tag ID,time,agent pos,bin)
-            det_count[i]+=dets
-        if field == fields[3]:
-            latestMeas=rastrigin(pos[0],pos[1])
-            if last_meas+measurement_time<=t:
-                updateGP = True
-        elif field == fields[2]:
-            latestMeas=rosenbrock(pos[0],pos[1])
-            if last_meas+measurement_time<=t:
-                updateGP = True
-        elif field == fields[1]:
-            latestMeas=gaussianSum(pos[0],pos[1])
-            bin = E.getAbstractPos(pos[0], pos[1]) - 1
-            allMeasurementData.append([latestMeas, t, [pos[0], pos[1]], bin])
-            if latestMeas >= fieldMax[1][2]:
-                endSim=True
-            if last_meas+measurement_time<=t:
-                updateGP = True
-        elif field == fields[0]:
-            if last_meas+measurement_time<=t:
-                updateGP = True
-                bin=E.getAbstractPos(pos[0],pos[1])-1
-                dtSet=agent.sensor.detectionSet
-                rate_meas = len(dtSet)*1.0/measurement_time
-                latestMeas=rate_meas
-                if latestMeas >= fieldMax[0][2]:
-                    endSim=True
-                agent.belief_count[bin]+=1
-                agent.belief_map[bin]= iterative_average(rate_meas,agent.belief_count[bin],round(agent.belief_map[bin],3))  #iteratively average rate measurement
-                if len(agent.sensor.detectionSet)>0:
-                    #print("agent ",i,", rate = ",rate_meas,",average rate = ",agent.belief_map[bin], " in bin ", bin)
-                    #print(last_meas,t,dtSet)
-                    agent.sensor.detectionSet=set()
-        posx[i]=pos[0]
-        posy[i]=pos[1]
-    plt.clf()
-    if last_meas+measurement_time<=t:
-        last_meas=t
-    if field == fields[0]:
-        for tag in taglist:
-            if show_only_when_pinging:
-                if tag.pinging(t):
-                    x,y,_ = tag.pos
-                    pinging_x=np.append(pinging_x,x)
-                    pinging_y=np.append(pinging_y,y)
-            tag.updatePing(t)
-        if show_only_when_pinging and visualize:
-            draw((pinging_x,pinging_y))
-        elif visualize:
-            draw((tagx,tagy))
-    if (field == fields[1] or field == fields[2] or field == fields[3]) and visualize:
-        updateGP = True
-        sensorRange=None
-        plt.contourf(plottingPoints[:,:,0], plottingPoints[:,:,1],plottingPoints[:,:,2], 20, cmap='coolwarm')# cmap='inferno'), cmap='RdGy')
-    if maxMeas<latestMeas:
-        maxMeas=latestMeas
-    if endSim and stopOnMax:
-        break
-    t+=time_step
-    if visualize:
-        drawAgent((posx,posy),r=sensorRange)
-    plt.pause(0.00001) #plt.pause(time_step)
+	posx=np.zeros(numAgents)
+	posy=np.zeros(numAgents)
+	pinging_x =np.zeros(1)
+	pinging_y =np.zeros(1)
+	#print(t)
+	for i in range(len(agentList)):
+		agent=agentList[i]
+		pos=agent.getPos()
+		#state = agent.getPos()#
+		#srange=agent.sensor.range
+		if (method==searchMethods[3] or method==searchMethods[0]) and not searchMIDCAErgodic:
+			wp_list[i], u = wp_track(np.array(pos), wp_list[i])
+		if method == searchMethods[2] and syncronize:
+			u=doubleIntegratorErgodicControl(agent,updateGP)
+			if updateGP:
+				updateGP=False
+		if method == searchMethods[4] and syncronize:
+			u=singleIntegratorErgodicControl(agent,updateGP)
+			if updateGP:
+				updateGP=False
+		if searchMIDCAErgodic:
+			#off=(round(np.random.rand()*4)*x_range/5.0,round(np.random.rand()*4)*x_range/5.0)
+			#sc=x_range/5.0
+			u=singleIntegratorErgodicControl(agent,updateGP,scale=sc,offsets=off)
+			if updateGP:
+				updateGP=False
+		state=simulate_dynamics(agent,u, [0,time_step],.1)
+		dets=agent.updateAgent(state,t)
+		pos=agent.getPos()
+		if field == fields[0]:
+			pinging,detSet,dets2=tagField(tagData,pos,t,time_step,sensorRange)
+			#print(t,pinging.shape,dets,dets,detSet,agent.sensor.detectionSet)
+			allDetectionData = agent.sensor.detectionList  # history of every tag detection. includes (tag ID,time,agent pos,bin)
+			det_count[i]+=dets
+		if field == fields[3]:
+			latestMeas=rastrigin(pos[0],pos[1])
+			if last_meas+measurement_time<=t:
+				updateGP = True
+		elif field == fields[2]:
+			latestMeas=rosenbrock(pos[0],pos[1])
+			if last_meas+measurement_time<=t:
+				updateGP = True
+		elif field == fields[1]:
+			latestMeas=gaussianSum(pos[0],pos[1])
+			bin = E.getAbstractPos(pos[0], pos[1]) - 1
+			allMeasurementData.append([latestMeas, t, [pos[0], pos[1]], bin])
+			if latestMeas >= fieldMax[1][2]:
+				endSim=True
+			if last_meas+measurement_time<=t:
+				updateGP = True
+		elif field == fields[0]:
+			if last_meas+measurement_time<=t:
+				updateGP = True
+				bin=E.getAbstractPos(pos[0],pos[1])-1
+				dtSet=agent.sensor.detectionSet
+				rate_meas = len(dtSet)*1.0/measurement_time
+				latestMeas=rate_meas
+				if latestMeas >= fieldMax[0][2]:
+					endSim=True
+				agent.belief_count[bin]+=1
+				agent.belief_map[bin]= iterative_average(rate_meas,agent.belief_count[bin],round(agent.belief_map[bin],3))  #iteratively average rate measurement
+				if len(agent.sensor.detectionSet)>0:
+					#print("agent ",i,", rate = ",rate_meas,",average rate = ",agent.belief_map[bin], " in bin ", bin)
+					#print(last_meas,t,dtSet)
+					agent.sensor.detectionSet=set()
+		posx[i]=pos[0]
+		posy[i]=pos[1]
+	plt.clf()
+	print(t,pos,u,latestMeas)
+	if last_meas+measurement_time<=t:
+		last_meas=t
+	if field == fields[0]:
+		for tag in taglist:
+			if show_only_when_pinging:
+				if tag.pinging(t):
+					x,y,_ = tag.pos
+					pinging_x=np.append(pinging_x,x)
+					pinging_y=np.append(pinging_y,y)
+			tag.updatePing(t)
+		if show_only_when_pinging and visualize:
+			draw((pinging_x,pinging_y))
+		elif visualize:
+			draw((tagx,tagy))
+	if (field == fields[1] or field == fields[2] or field == fields[3]) and visualize:
+		updateGP = True
+		sensorRange=None
+		plt.contourf(plottingPoints[:,:,0], plottingPoints[:,:,1],plottingPoints[:,:,2], 20, cmap='coolwarm')# cmap='inferno'), cmap='RdGy')
+	if maxMeas<latestMeas:
+		maxMeas=latestMeas
+	t+=time_step
+	if visualize:
+		drawAgent((posx,posy),r=sensorRange)
+	plt.pause(0.00001)#plt.pause(time_step)
+	if endSim and stopOnMax:
+		break
 
 
+>>>>>>> 9968a3aea6c44f7e569d2dd7def8daa4ad771d38
 ################################################ end simulation loop ####################################
 ################################################ final plots       ######################################
 run=False
@@ -925,34 +993,32 @@ if method==searchMethods[2] or method==searchMethods[4]:
     sock.send("end ".encode('utf-8'))
 #input('done')
 if field == fields[0]:
-    draw((tagx,tagy))
-    drawAgent((posx,posy),r=sensorRange)
-    for i in range(len(agentList)):
-        agent=agentList[i]
-        print("agent ",i," rate estimates")
-        agent.belief_map.shape=(5,5)
-        print(np.flip(agent.belief_map,0))
-        print("and measurements taken per cell")
-        agent.belief_count.shape=(5,5)
-        print(np.flip(agent.belief_count,0))
+	draw((tagx,tagy))
+	drawAgent((posx,posy),r=sensorRange)
+	for i in range(len(agentList)):
+		agent=agentList[i]
+		print("agent ",i," rate estimates")
+		agent.belief_map.shape=(5,5)
+		print(np.flip(agent.belief_map,0))
+		print("and measurements taken per cell")
+		agent.belief_count.shape=(5,5)
+		print(np.flip(agent.belief_count,0))
 
-    print("True probability density  map")
-    E.p.shape=(5,5)
-    print(np.flip(E.p,0))
-    #spacing=(50,50)
-    """
-    print("Rate field approximation for sensor with range",sensorRange," spaced at intervals of",spacing)
-    approx,pnts=E.approximateField(measurement_time,spacing=spacing,sensorRange=sensorRange,get_points=True)
-    #print(np.round(approx,decimals=2))
-    plt.figure(2)
-    plt.axis('scaled')
-    plt.grid(True)
-    #print('\n',pnts[:,:,0],'\n',pnts[:,:,1])
-    #plt.plot(pnts[:,:,0].flatten(), pnts[:,:,1].flatten(), 'r.',cmap='coolwarm')
-    plt.contourf(pnts[:,:,0], pnts[:,:,1], np.flip(np.round(approx,decimals=2),(0,1)).transpose(), 20, cmap='coolwarm')# cmap='inferno'), cmap='RdGy')
-    cbar = plt.colorbar()
-    cbar.set_label('Detection rate')
-    """
+	print("True probability density  map")
+	E.p.shape=(5,5)
+	print(np.flip(E.p,0))
+	#spacing=(50,50)
+	print("Rate field approximation for sensor with range",sensorRange," spaced at intervals of",spacing)
+	approx,pnts=E.approximateField(measurement_time,spacing=spacing,sensorRange=sensorRange,get_points=True)
+	#print(np.round(approx,decimals=2))
+	plt.figure(2)
+	plt.axis('scaled')
+	plt.grid(True)
+	#print('\n',pnts[:,:,0],'\n',pnts[:,:,1])
+	#plt.plot(pnts[:,:,0].flatten(), pnts[:,:,1].flatten(), 'r.',cmap='coolwarm')
+	plt.contourf(pnts[:,:,0], pnts[:,:,1], np.flip(np.round(approx,decimals=2),(0,1)).transpose(), 20, cmap='coolwarm')# cmap='inferno'), cmap='RdGy')
+	cbar = plt.colorbar()
+	cbar.set_label('Detection rate')
 if field == fields[1] or field == fields[2] or field == fields[3]:
     plt.contourf(plottingPoints[:,:,0], plottingPoints[:,:,1],plottingPoints[:,:,2], 20, cmap='coolwarm')# cmap='inferno'), cmap='RdGy')
     drawAgent((posx,posy))
@@ -972,9 +1038,9 @@ plt.yticks(np.arange(0,y_range,spacing[1]))
 plt.draw()
 plt.pause(0.00001)
 if logData:
-    f=open("log.txt",'a')
-    f.write(field+","+str(t)+","+str(agent.getPos())+","+str(latestMeas)+"\n")
-    f.close()
+	f=open("log.txt",'+a')
+	f.write(field+","+str(t)+","+str(agent.getPos())+","+str(latestMeas)+"\n")
+	f.close()
 print(str(t)+","+str(agent.getPos())+","+str(latestMeas),", max val: ",maxMeas)
 input('done')
 
