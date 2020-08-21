@@ -25,7 +25,9 @@
 #include <ctime> //for timing 
 #include <gp.h> 
 #include <rprop.h>
-using namespace libgp; 
+using namespace libgp;
+#define MSG_NOSIGNAL 0x2000 /* don't raise SIGPIPE */
+
 namespace sac{			  
 	float averageVariance=1;
 	float maxVariance=1;
@@ -100,7 +102,7 @@ interval.
            over the remaining interval.
   NOTE: for speed return and input types should be changed and passed as
         references / pointers */
-#define PORT 8080
+#define PORT 5701
 int main(int /* argc */ , char** /* argv */ ) 
 {											 
 	using namespace std;
@@ -139,8 +141,8 @@ int main(int /* argc */ , char** /* argv */ )
 	memset(&addr,0,sizeof(addr));
     addr.sin_addr.s_addr = INADDR_ANY;
 	addrlen = sizeof(addr);
-	if(setsockopt(master_sock, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT,
-                                                  &opt, sizeof(opt)))
+    if (setsockopt(master_sock, SOL_SOCKET, SO_REUSEADDR , &opt, sizeof(opt)))
+
 	{
         perror("setsockopt");
         exit(EXIT_FAILURE);
@@ -168,7 +170,7 @@ int main(int /* argc */ , char** /* argv */ )
 	read(new_socket,buff, sizeof(buff));
     scale = atof(buff);
 	float fullscale = scale;
-	std::cout << scale <<"\n";
+	std::cout << "Scale " << scale <<"\n";
 	size_t sz;
 	//read(new_socket,buff, sizeof(buff));
 	//split1(buff, holder);
@@ -187,8 +189,9 @@ int main(int /* argc */ , char** /* argv */ )
 		holder.erase(holder.begin(),holder.end());
 		split1(buff, holder);
 		//cout << buff <<"-buff2\n"<< run <<"\n";
+        cout << "Message " << holder.front() ;
 		if (holder.front().compare("end")==0){
-			cout << buff << "\n";
+			cout << "end" << buff << "\n";
 			run=false;
 			continue;
 		}

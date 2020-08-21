@@ -18,7 +18,8 @@ allDetectionData = None
 allMeasurementData = []
 t = 0
 endSim = False			  
-
+current_scale = None
+current_offsets = None
 
 def find_max_5_values_avg(time):
     a = {}
@@ -542,7 +543,6 @@ def doubleIntegratorErgodicControl(agent,update,scale=None,offsets=None):
     st=agent.state
     if scale!=None:
         sock.send(str.encode("change_scale "+str(scale)+"\n "))
-        read
     else:
         scale=x_range
     if offsets!=None:
@@ -571,15 +571,18 @@ def doubleIntegratorErgodicControl(agent,update,scale=None,offsets=None):
 def singleIntegratorErgodicControl(agent,update,scale=None,offsets=None):
     global run,t,current_scale,current_offsets
     st=agent.state
+    print (offsets)
     if scale!=None:
         if current_scale != scale:
             sock.send(str.encode("change_scale "+str(scale)))
-            confirm=sock.recv(1024)
+            sock.send(str.encode("change_scale " + str(scale)))
+            confirm= sock.recv(1024)
             current_scale = scale if "confirm" in confirm.decode('utf-8') else x_range
     else:
         scale=x_range
-    if offsets!=None:
-        if current_offsets != offsets:
+
+    if not offsets is None:
+        if not current_offsets is offsets:
             sock.send(str.encode("offset "+str(offsets[0])+" "+str(offsets[1])+"\0"))
             confirm=sock.recv(1024)
             current_offsets = offsets if "confirm" in confirm.decode('utf-8') else (0,0)
@@ -591,6 +594,8 @@ def singleIntegratorErgodicControl(agent,update,scale=None,offsets=None):
         else:
             sock.send(str.encode(str((round(st[0],1)-offsets[0])/scale)+" "+str((round(st[1],1)-offsets[1])/scale)+" "+str(t)+" "+str(latestMeas)))
     except:
+        traceback.print_exc()
+        #print(e)
         run=False
         t=simtime
         return
@@ -606,7 +611,7 @@ def singleIntegratorErgodicControl(agent,update,scale=None,offsets=None):
         return u
 
 def MidcaIntegrator(agent,update):
-    global running, searchComplete, wp_list, E, det_count, agentList, run, t
+    global running, searchComplete, wp_list, E, det_count, agentList, off, sc, searchMIDCAErgodic
     run = True
     st= agent.state
     try:
@@ -621,7 +626,7 @@ def MidcaIntegrator(agent,update):
         t=simtime
         return
     # accept connections from outside
-    (clientsocket, address) = sock.accept()
+    (clientsocket, address) = midcasock.accept()
     data = clientsocket.recv(1024)
     data = data.decode('utf-8')
     cmd=data.split(',')
@@ -668,6 +673,21 @@ def MidcaIntegrator(agent,update):
             [.5 * x_range / 5.0, .5 * y_range / 5.0])
         wp_list[0] = search(wp_list[0], center)
         searchComplete = False
+
+    elif cmd[0] == 'searchErgodic':
+        print (cmd)
+        x = int(cmd[1]) - 1
+        y = int(cmd[2]) - 1
+        off = np.array([x * x_range / 5.0, y * y_range / 5.0])
+        sc = x_range / 5.0
+        searchMIDCAErgodic = True
+        if len(cmd) >= 4:
+            sc = xrange if cmd[3] == 'fullGrid' else x_range / 5.0
+        # searchComplete = False
+
+    elif cmd[0] == 'quitSearchErgodic':
+        searchMIDCAErgodic = False
+        searchComplete = True
 
     elif cmd[0] == 'searchComplete':
         clientsocket.send(str.encode(str(searchComplete)))
@@ -1045,7 +1065,7 @@ density_map = np.array([0.1, 0.1, 0.4, 0.3, 0.2,
             0.3, 0.9, 0.3, 0.2, 0.1,
             0.2, 0.3, 0.2, 0.1, 0.1])
 #################################### simulation settings   ###################################
-N = 500 #how many tags present
+N = 100 #how many tags present
 simtime=1000 #max simulation time
 numAgents=1 #number of agents exploring
 sensorRange=2
@@ -1055,11 +1075,11 @@ spacing=(1,1)#(.5,.5) #spacing between points for visualizing fields
 searchMethods = ["MIDCA","SUSD","ERGODIC_DI","DEMO","ERGODIC_SI"]
 method = searchMethods[0]
 fields= ["tag","gassian sum","rosenbrock","rastrigin"]
-#fieldMax = [(5.5,14,1.5),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 #100
-fieldMax = [(5.5,14,4),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 #500
+fieldMax = [(5.5,14,1.5),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 #100
+#fieldMax = [(5.5,14,4),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 #500
 #fieldMax = [(5.5,14,7),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 #1000
 field = fields[0]
-fieldname="/Users/sravyakondrakunta/Documents/git/GracegridMIDCA/midca/domains/nbeacons/simulator/tags_500"
+fieldname="/Users/sravyakondrakunta/Documents/git/GracegridMIDCA/midca/domains/nbeacons/tagsim/tags_100"
 measurement_time = 2.0
 time_step=.5
 #start_pos=(.95*x_range,.9*y_range)#(.05*x_range,.1*y_range)#
@@ -1186,11 +1206,14 @@ for t in range(N):
 #########################  socket threads ###############################################
 # create an INET, STREAMing socket
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+midcasock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 if method == searchMethods[2] or method == searchMethods[4]:
     # connect to ergodic controller
-    sock.connect(('localhost', 8080))
+    sock.connect(('localhost', 5701))
 if method == searchMethods[2] or method == searchMethods[4] and syncronize:	
     sock.send(str.encode(str(x_range)))
+
+
 if method == searchMethods[2] and not syncronize:
     xthread = threading.Thread(target=ErgodicComLink)
     xthread.start()
@@ -1200,10 +1223,10 @@ if method == searchMethods[4] and not syncronize:
 if method == searchMethods[0] and syncronize:
     # now do something with the clientsocket
     # in this case, we'll pretend this is a threaded server
-    sock.bind(('127.0.0.1', 5700))
-    sock.listen(5)
-
-else:
+    midcasock.bind(('127.0.0.1', 5700))
+    sock.connect(('localhost', 5701))
+    midcasock.listen(5)
+if method == searchMethods[0] and not syncronize:
     # now do something with the clientsocket
     # in this case, we'll pretend this is a threaded server
     xthread = threading.Thread(target=MidcaComLink)
@@ -1296,10 +1319,10 @@ while t<=simtime:#or running: #change to better simulation stopping criteria
                     endSim=True
 
                 # to stop in cell
-                #pos = agent.getPos()
-                #myx, myy = E.getCellXY(pos[0], pos[1])
-                #if myx == 2 and myy == 4:
-                #    endSim = True
+                pos = agent.getPos()
+                myx, myy = E.getCellXY(pos[0], pos[1])
+                if myx == 2 and myy == 4:
+                    endSim = True
 
                 agent.belief_count[bin]+=1
                 agent.belief_map[bin]= iterative_average(rate_meas,agent.belief_count[bin],round(agent.belief_map[bin],3))  #iteratively average rate measurement

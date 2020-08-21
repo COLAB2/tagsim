@@ -104,6 +104,14 @@ class TagWorld():
         msg = "search," + str(position[0]+1) + "," + str(position[1]+1)
         self.sock.send(str.encode(str(msg)))
 
+    def stopErgodic(self):
+        msg = "quitSearchErgodic"
+        self.sock.send(str.encode(str(msg)))
+
+    def searchErgodic(self, position):
+        msg = "searchErgodic," + str(position[0]+1) + "," + str(position[1]+1)
+        self.sock.send(str.encode(str(msg)))
+
 
     def send(self, position):
         msg = str(position[0]+1) + "," + str(position[1]+1)
@@ -174,7 +182,7 @@ def move_and_search(position, position1):
         time.sleep(0.01)
 
     tag = TagWorld()
-    tag.search(position)
+    tag.searchErgodic(position)
 
     search = True
     while (search):
@@ -234,7 +242,9 @@ if __name__ == "__main__":
 
         #time.sleep(0.1)
 
+
         move_and_search([2,0] , "2,0")
+        """
         move_and_search([3,0] , "3,0")
         move_and_search([2,1] , "2,1")
         move_and_search([1,0] , "1,0")
@@ -242,7 +252,7 @@ if __name__ == "__main__":
         move_and_search([2,2] , "2,2")
         move_and_search([1,2] , "1,2")
         move_and_search([1,3] , "1,3")
-
+        """
 
 
         tag = TagWorld()

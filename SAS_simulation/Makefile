@@ -8,19 +8,18 @@ LIBDIR = ./src
 INCDIR = ./include
 USERDIR = ./user
 LFLAGS = -L./include
+BOOST = /opt/local/include
+EIGEN = /opt/local/include/eigen3
+
+
 # Prefer static libs to dynamic
-LIBS = -Wl,-Bstatic \
-	  	 -Wl,-Bdynamic
+LIBS = -Wl#,-Bdynamic
 #	  -lrt -Wl,-Bdynamic
-
-
-
-
-
-
  
 #CFLAGS = -I/home/emmanouil/eigen-eigen-07105f7124f9/ -I/home/emmanouil/boost_1_60_0 -I$(USERDIR) -I$(LIBDIR)
-CFLAGS = -I"C:\c_libraries\eigen-eigen-dc6cfdf9bcec" -I"C:\c_libraries\boost_1_61_0" -I$(LIBDIR) -I$(INCDIR) -I$(USERDIR)
+#CFLAGS = -I"C:\c_libraries\eigen-eigen-dc6cfdf9bcec" -I"C:\c_libraries\boost_1_61_0" -I$(LIBDIR) -I$(INCDIR) -I$(USERDIR)
+
+CFLAGS = -I$(USERDIR) -I$(LIBDIR) -I$(INCDIR) -I$(BOOST) -I$(EIGEN)
 
 # Default code optimization level
 OPT = -O2
