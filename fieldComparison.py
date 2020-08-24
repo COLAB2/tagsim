@@ -1282,6 +1282,7 @@ while t<=simtime:#or running: #change to better simulation stopping criteria
             #off=(round(np.random.rand()*4)*x_range/5.0,round(np.random.rand()*4)*x_range/5.0)
             #sc=x_range/5.0
             u=singleIntegratorErgodicControl(agent,updateGP,scale=sc,offsets=off)
+            u=np.arctan2(u[1],u[0])
             if updateGP:
                 updateGP=False
         state=simulate_dynamics(agent,u, [0,time_step],.1)
