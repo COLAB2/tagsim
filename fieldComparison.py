@@ -1282,7 +1282,10 @@ while t<=simtime:#or running: #change to better simulation stopping criteria
             #off=(round(np.random.rand()*4)*x_range/5.0,round(np.random.rand()*4)*x_range/5.0)
             #sc=x_range/5.0
             u=singleIntegratorErgodicControl(agent,updateGP,scale=sc,offsets=off)
-            u=np.arctan2(u[1],u[0])
+            if u[0]==0 and u[1]==0:
+				_,u=wp_track(agent.getPos(),[np.array([(off[0]+sc)/2,(off[1]+sc)/2])])
+			else:
+				u=np.arctan2(u[1],u[0])	
             if updateGP:
                 updateGP=False
         state=simulate_dynamics(agent,u, [0,time_step],.1)
