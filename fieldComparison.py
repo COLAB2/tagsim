@@ -1022,6 +1022,14 @@ def wp_track(x,wp_list):
 ########################   motion models  ###################################                  
 def m1_step(x,u):
         return 1*np.array([np.cos(u), np.sin(u)])
+def m1_stepHalfSpeed(x,u):#big remora attack
+        return .5*np.array([np.cos(u), np.sin(u)])
+def m1_stepDrift1(x,u):#small remora attack on one wing or lost wing
+        u=u+.27
+        return 1*np.array([np.cos(u), np.sin(u)])
+def m1_stepDrift2(x,u):#small remora attack on other wing or lost wing
+        u=u-.27
+        return 1*np.array([np.cos(u), np.sin(u)])
 
 def m2_step(x,u):
         #  |0 0   1    0|x        |0 0|
