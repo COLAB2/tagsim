@@ -1029,6 +1029,14 @@ def wp_track(x,wp_list):
 ########################   motion models  ###################################                  
 def m1_step(x,u):
         return 1*np.array([np.cos(u), np.sin(u)])
+def m1_stepHalfSpeed(x,u):#big remora attack
+        return .5*np.array([np.cos(u), np.sin(u)])
+def m1_stepDrift1(x,u):#small remora attack on one wing or lost wing
+        u=u+.27
+        return 1*np.array([np.cos(u), np.sin(u)])
+def m1_stepDrift2(x,u):#small remora attack on other wing or lost wing
+        u=u-.27
+        return 1*np.array([np.cos(u), np.sin(u)])
 
 def m2_step(x,u):
         #  |0 0   1    0|x        |0 0|
@@ -1297,7 +1305,10 @@ while t<=simtime:#or running: #change to better simulation stopping criteria
                 searchMIDCAErgodic = False
                 searchComplete = True
             u=singleIntegratorErgodicControl(agent,updateGP,scale=sc,offsets=off)
-            u=np.arctan2(u[1],u[0])
+            if u[0]==0 and u[1]==0:
+				_,u=wp_track(agent.getPos(),[np.array([(off[0]+sc)/2,(off[1]+sc)/2])])
+			else:
+				u=np.arctan2(u[1],u[0])	
             if updateGP:
                 updateGP=False
         state=simulate_dynamics(agent,u, [0,time_step],.1)
