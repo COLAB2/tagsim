@@ -30,6 +30,8 @@
 #include <ctime> //for timing
 #include <gp.h>
 #include <rprop.h>
+#define MSG_NOSIGNAL 0x2000 /* don't raise SIGPIPE */
+
 
 using namespace libgp;
 namespace sac{
@@ -108,7 +110,7 @@ void split1(const std::string& str, Container& cont)
         references / pointers
 */
 
-#define PORT 8080
+#define PORT 5701
 int main(int /* argc */ , char** /* argv */ )
 {
 	using namespace std;
@@ -150,8 +152,7 @@ int main(int /* argc */ , char** /* argv */ )
 	memset(&addr,0,sizeof(addr));
     addr.sin_addr.s_addr = INADDR_ANY; 
 	addrlen = sizeof(addr);
-	if(setsockopt(master_sock, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, 
-                                                  &opt, sizeof(opt)))
+	if (setsockopt(master_sock, SOL_SOCKET, SO_REUSEADDR , &opt, sizeof(opt)))
 	{ 
         perror("setsockopt"); 
         exit(EXIT_FAILURE); 

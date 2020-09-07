@@ -240,10 +240,13 @@ if __name__ == "__main__":
         tag.runSim()
 
 
-        #time.sleep(0.1)
 
+        tag = TagWorld()
+        tag.searchErgodic([3,4])
 
-        move_and_search([2,0] , "2,0")
+        #move_and_search([3,0] , "3,0")
+
+        #move_and_search([3, 4], "3,4")
         """
         move_and_search([3,0] , "3,0")
         move_and_search([2,1] , "2,1")
@@ -255,8 +258,8 @@ if __name__ == "__main__":
         """
 
 
-        tag = TagWorld()
-        tag.endSim()
+        #tag = TagWorld()
+        #tag.endSim()
 
 
 

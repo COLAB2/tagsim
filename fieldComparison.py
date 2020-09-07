@@ -20,7 +20,8 @@ t = 0
 endSim = False			  
 current_scale = None
 current_offsets = None
-
+start_ergodic_time = None
+stop_ergodic_time = 18
 def find_max_5_values_avg(time):
     a = {}
     for each in time:
@@ -572,9 +573,11 @@ def singleIntegratorErgodicControl(agent,update,scale=None,offsets=None):
     global run,t,current_scale,current_offsets
     st=agent.state
     print (offsets)
+
     if scale!=None:
         if current_scale != scale:
             sock.send(str.encode("change_scale "+str(scale)))
+            time.sleep(1)
             sock.send(str.encode("change_scale " + str(scale)))
             confirm= sock.recv(1024)
             current_scale = scale if "confirm" in confirm.decode('utf-8') else x_range
@@ -611,7 +614,7 @@ def singleIntegratorErgodicControl(agent,update,scale=None,offsets=None):
         return u
 
 def MidcaIntegrator(agent,update):
-    global running, searchComplete, wp_list, E, det_count, agentList, off, sc, searchMIDCAErgodic
+    global running, searchComplete, wp_list, E, det_count, agentList, off, sc, searchMIDCAErgodic, t, start_ergodic_time
     run = True
     st= agent.state
     try:
@@ -667,6 +670,7 @@ def MidcaIntegrator(agent,update):
         myx, myy = E.getCellXY(pos[0], pos[1])
         clientsocket.send(str.encode(str(myx) + "," + str(myy)))
     elif cmd[0] == 'search':
+        print ("The time started is" + str(t))
         x = int(cmd[1]) - 1
         y = int(cmd[2]) - 1
         center = np.array([x * x_range / 5.0, y * y_range / 5.0]) + np.array(
@@ -683,6 +687,7 @@ def MidcaIntegrator(agent,update):
         searchMIDCAErgodic = True
         if len(cmd) >= 4:
             sc = xrange if cmd[3] == 'fullGrid' else x_range / 5.0
+        start_ergodic_time = t
         # searchComplete = False
 
     elif cmd[0] == 'quitSearchErgodic':
@@ -690,6 +695,8 @@ def MidcaIntegrator(agent,update):
         searchComplete = True
 
     elif cmd[0] == 'searchComplete':
+        if searchComplete:
+            print ("The time stopped is" + str(t))
         clientsocket.send(str.encode(str(searchComplete)))
 
     elif cmd[0] == 'get_tags':
@@ -1065,21 +1072,26 @@ density_map = np.array([0.1, 0.1, 0.4, 0.3, 0.2,
             0.3, 0.9, 0.3, 0.2, 0.1,
             0.2, 0.3, 0.2, 0.1, 0.1])
 #################################### simulation settings   ###################################
-N = 100 #how many tags present
+N = 1000 #how many tags present
 simtime=1000 #max simulation time
 numAgents=1 #number of agents exploring
-sensorRange=2
+sensorRange=1.5
 x_range=20.0 #grid size
 y_range=20.0
 spacing=(1,1)#(.5,.5) #spacing between points for visualizing fields
 searchMethods = ["MIDCA","SUSD","ERGODIC_DI","DEMO","ERGODIC_SI"]
-method = searchMethods[0]
+method = searchMethods[4]
 fields= ["tag","gassian sum","rosenbrock","rastrigin"]
-fieldMax = [(5.5,14,1.5),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 #100
-#fieldMax = [(5.5,14,4),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 #500
-#fieldMax = [(5.5,14,7),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 #1000
+#fieldMax = [(5.5,14,1.5),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 #100 and sensorRange = 2
+#fieldMax = [(5.5,14,4),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 #500 and sensorRange = 2
+#fieldMax = [(5.5,14,10),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 #500 and sensorRange = 2.5
+#fieldMax = [(5.5,14,8),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 #500 and sensorRange = 1.5
+#fieldMax = [(5.5,14,7),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 #1000 and sensorRange = 2
+fieldMax = [(5.5,14,14),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 #1000 and sensorRange = 2.5
+#fieldMax = [(5.5,14,5),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 #1000 and sensorRange = 2.5
+
 field = fields[0]
-fieldname="/Users/sravyakondrakunta/Documents/git/GracegridMIDCA/midca/domains/nbeacons/tagsim/tags_100"
+fieldname="/Users/sravyakondrakunta/Documents/git/GracegridMIDCA/midca/domains/nbeacons/tagsim/tags_1000"
 measurement_time = 2.0
 time_step=.5
 #start_pos=(.95*x_range,.9*y_range)#(.05*x_range,.1*y_range)#
@@ -1281,6 +1293,9 @@ while t<=simtime:#or running: #change to better simulation stopping criteria
         if searchMIDCAErgodic:
             #off=(round(np.random.rand()*4)*x_range/5.0,round(np.random.rand()*4)*x_range/5.0)
             #sc=x_range/5.0
+            if (t - start_ergodic_time) > stop_ergodic_time:
+                searchMIDCAErgodic = False
+                searchComplete = True
             u=singleIntegratorErgodicControl(agent,updateGP,scale=sc,offsets=off)
             u=np.arctan2(u[1],u[0])
             if updateGP:
