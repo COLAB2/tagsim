@@ -412,7 +412,7 @@ def singleIntegratorErgodicControl(agent,update,scale=None,offsets=None):
             _,utemp=wp_track(agent.getPos(),np.array([[offsets[0]+scale/2.0,offsets[1]+scale/2.0]]))
             u=np.clip(np.array([np.cos(utemp), np.sin(utemp)]),-1,1)
         return u
-      
+######################################  helper functions ##################################      
 def draw(x):
     plt.figure(1)
     plt.axis('scaled')
@@ -452,7 +452,7 @@ def simulate_dynamics(agent,u,tspan,dt):
         inc+=agent.dynamics(inc,u)*dt#+world.flow(agent.getPos())*dt
     return inc
 
-  def search(wp_list,X):
+def search(wp_list,X):
     #X is the center position of one of the 25 cells
     offset=.375*x_range/5
     wp_list.append(np.array(X))
@@ -487,6 +487,7 @@ def m1_stepDrift2(x,u):#small remora attack on other wing or lost wing
         u=u-.27
         return 1*np.array([np.cos(u), np.sin(u)])  
   
+	
 N = cfg.N
 simtime=cfg.simtime 
 numAgents=cfg.numAgents 
@@ -500,12 +501,13 @@ fieldMax = cfg.fieldMax
 fieldname=cfg.fieldname
 measurement_time = cfg.measurement_time
 time_step= cfg.time_step
+switchProb=cfg.switchProb
+if len(sys.argv)>0:
+	start_pos = cfg.start_pos[int(sys.argv[1])]
+else:
+	start_pos = cfg.start_pos[0]
+removalRate=cfg.remoraRemovalSuccess
 
-start_pos = simSettings.start_pos[int(sys.argv[1])]
-show_only_when_pinging= cfg.show_only_when_pinging
-stopOnMax = cfg.stopOnMax
-visualize = cfg.visualize
-logData= cfg.logData
 t=0
 last_meas=t
 run=False
@@ -517,16 +519,20 @@ latestMeas=0
 sc=x_range
 off=(0,0)
 u=0
-
+faultyMode=False
+reasons=["remora","wing"]
+explanation=""
+removeRemoraAction=False
 taglist=[]
 agentList=[]
-tagx=np.zeros(N)
-tagy=np.zeros(N)
+
 
 E = Grid(taglist,x_range=x_range, y_range=y_range)
 taglist= E.loadTagList(fieldname) #E.setMap(density_map)
 tagData=np.genfromtxt(fieldname+".csv",delimiter=",")
-    
+tagx=tagData[:,1]
+tagy=tagData[:,2]
+
 for i in range(numAgents):
     s= AcousticReciever(np.array([0,0,0]),sensorRange)
     agentList.append(Agent(np.array([start_pos[0],start_pos[1]]),s,E,dim=2))
@@ -538,10 +544,9 @@ for i in range(numAgents):
 # create an INET, STREAMing socket
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 midcasock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-if method == searchMethods[2] or method == searchMethods[4]:
+if method == searchMethods[2] :
     # connect to ergodic controller
-    sock.connect(('localhost', 5701))
-if method == searchMethods[2] or method == searchMethods[4] and syncronize:	
+    sock.connect(cfg.ErgodicSocketInfo)
     sock.send(str.encode(str(x_range)))
 
 
@@ -554,7 +559,7 @@ if method == searchMethods[0] :
     midcasock.listen(5)
     
     
-if method==searchMethods[3] or method==searchMethods[0]:
+if method==searchMethods[1] or method==searchMethods[0]:
     wp_list = [[],[],[]]
     for i in range(len(agentList)):
         agent=agentList[i]
@@ -564,22 +569,43 @@ if method==searchMethods[3] or method==searchMethods[0]:
 ################################################ simulation loop ####################################
 endSim=False
 maxMeas=0
+lost_steps=0
 while t<=simtime:#or running: #change to better simulation stopping criteria 
     posx=np.zeros(numAgents)
     posy=np.zeros(numAgents)
-    pinging_x =np.zeros(1)
-    pinging_y =np.zeros(1)
     #print(t)
     for i in range(len(agentList)):
         agent=agentList[i]
         pos=agent.getPos()
-        if (method==searchMethods[3] or method==searchMethods[0]) and not searchMIDCAErgodic:
+	temp = 1 if faultyMode else np.random.rand()
+	if removeRemoraAction:
+		lost_steps+=1
+		if lost_steps>=cfg.downTime:
+			if np.random.rand()<removalRate and explanation!=reasons[1]:
+				agent.dynamics=m1_step
+				faultyMode=False
+				explanation=""
+			lost_steps=0
+			removeRemoraAction=False
+	if temp<switchProb:
+		faultyMode = True
+		if temp/switchProb<1/3.0:
+			agent.dynamics=m1_stepHalfSpeed
+			explanation=reasons[0]
+		elif temp/switchProb<2/3.0:
+			agent.dynamics=m1_stepDrift1
+			explanation=reasons[cfg.rvwProb<np.random.rand()]
+		else:
+			agent.dynamics=m1_stepDrift2
+			explanation=reasons[cfg.rvwProb<np.random.rand()]
+		
+        if (method==searchMethods[0]) and not searchMIDCAErgodic:
             wp_list[i], u = wp_track(np.array(pos), wp_list[i])
             MidcaIntegrator(agent, updateGP)
             # print(t, pos, u, latestMeas)
             if updateGP:
                 updateGP = False
-        if method == searchMethods[4]:
+        if method == searchMethods[2]:
             u=singleIntegratorErgodicControl(agent,updateGP)
             if updateGP:
                 updateGP=False
@@ -588,15 +614,18 @@ while t<=simtime:#or running: #change to better simulation stopping criteria
             #sc=x_range/5.0
             u=singleIntegratorErgodicControl(agent,updateGP,scale=sc,offsets=off)
             if u[0]==0 and u[1]==0:
-				      _,u=wp_track(agent.getPos(),[np.array([(off[0]+sc)/2,(off[1]+sc)/2])])
+			_,u=wp_track(agent.getPos(),[np.array([(off[0]+sc)/2,(off[1]+sc)/2])])
         else:
           u=np.arctan2(u[1],u[0])	
               if updateGP:
                   updateGP=False
-        state=simulate_dynamics(agent,u, [0,time_step],.1)
+        if removeRemoraAction:
+		pos=agent.getPos()
+		_, u = wp_track(np.array(pos),  [[pos[0], pos[1]]])
+	state=simulate_dynamics(agent,u, [0,time_step],.1)
         agent.updateAgent(state,t)
         pos=agent.getPos()
-        pinging,detSet,dets2=tagField(tagData,pos,t,time_step,sensorRange)
+        pinging,detSet,dets=tagField(tagData,pos,t,time_step,sensorRange)
         #print(t,pinging.shape,dets,dets,detSet,agent.sensor.detectionSet)
         allDetectionData = agent.sensor.detectionList  # history of every tag detection. includes (tag ID,time,agent pos,bin)
         det_count[i]+=dets
@@ -623,35 +652,25 @@ while t<=simtime:#or running: #change to better simulation stopping criteria
     #print(t,pos,u,latestMeas)
     if last_meas+measurement_time<=t:
         last_meas=t
-    for tag in taglist:
-        if show_only_when_pinging:
-            if tag.pinging(t):
-                x,y,_ = tag.pos
-                pinging_x=np.append(pinging_x,x)
-                pinging_y=np.append(pinging_y,y)
-        tag.updatePing(t)
-    if show_only_when_pinging and visualize:
-        draw((pinging_x,pinging_y))
+
+    if cfg.show_only_when_pinging and visualize:
+        draw((pinging[:,1],pinging[:,2]))
     elif visualize:
         draw((tagx,tagy))
-    if (field == fields[1] or field == fields[2] or field == fields[3]) and visualize:
-        updateGP = True
-        sensorRange=None
-        plt.contourf(plottingPoints[:,:,0], plottingPoints[:,:,1],plottingPoints[:,:,2], 20, cmap='coolwarm')# cmap='inferno'), cmap='RdGy')
     if maxMeas<latestMeas:
         maxMeas=latestMeas
     t+=time_step
-    if visualize:
+    if cfg.visualize:
         drawAgent((posx,posy),r=sensorRange)
     plt.pause(0.00001)#plt.pause(time_step)
-    if endSim and stopOnMax:
+    if endSim and cfg.stopOnMax:
         break
 
 
 ################################################ end simulation loop ####################################
 ################################################ final plots       ######################################
 run=False
-if method==searchMethods[2] or method==searchMethods[4]:
+if method==searchMethods[2]:
     sock.send("end ".encode('utf-8'))
     
 draw((tagx,tagy))
@@ -665,15 +684,32 @@ for i in range(len(agentList)):
     agent.belief_count.shape=(5,5)
     print(np.flip(agent.belief_count,0))
     
-    
+
+print("True probability density  map")
+E.p.shape=(5,5)
+print(np.flip(E.p,0))
+#spacing=(50,50)
+print("Rate field approximation for sensor with range",sensorRange," spaced at intervals of",spacing)
+approx,pnts=E.approximateField(measurement_time,spacing=spacing,sensorRange=sensorRange,get_points=True)
+#print(np.round(approx,decimals=2))
+plt.figure(2)
+plt.axis('scaled')
+plt.grid(True)
+#print('\n',pnts[:,:,0],'\n',pnts[:,:,1])
+#plt.plot(pnts[:,:,0].flatten(), pnts[:,:,1].flatten(), 'r.',cmap='coolwarm')
+plt.contourf(pnts[:,:,0], pnts[:,:,1], np.flip(np.round(approx,decimals=2),(0,1)).transpose(), 20, cmap='coolwarm')# cmap='inferno'), cmap='RdGy')
+cbar = plt.colorbar()
+cbar.set_label('Detection rate') 
+
 plt.xlim([0, x_range])
 plt.ylim([0, y_range])
 plt.xticks(np.arange(0,x_range,spacing[0]))
 plt.yticks(np.arange(0,y_range,spacing[1]))
 plt.draw()
 plt.pause(0.00001)
-if logData:
-    f=open("log.txt",'a')
+
+if cfg.logData:
+    f=open(method+"log.txt",'a')
     f.write(field+","+str(t)+","+str(agent.getPos())+","+str(latestMeas)+"\n")
     f.close()
 print(str(t)+","+str(agent.getPos())+","+str(latestMeas),", max val: ",maxMeas)
