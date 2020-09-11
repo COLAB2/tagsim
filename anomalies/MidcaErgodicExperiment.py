@@ -570,7 +570,7 @@ if method==searchMethods[1] or method==searchMethods[0]:
 endSim=False
 maxMeas=0
 lost_steps=0
-while t<=simtime:#or running: #change to better simulation stopping criteria 
+while t<=simtime:#or running: 
     posx=np.zeros(numAgents)
     posy=np.zeros(numAgents)
     #print(t)
