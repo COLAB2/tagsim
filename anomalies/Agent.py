@@ -8,7 +8,7 @@ def m2_step(x,u):
 	return 0.005*np.array([-0.5*np.cos(u), np.sin(u)])
 	
 class Agent():
-    def  __init__(self,state,sensor,world,x_index=0,y_index=1,z_index=2,dim=3):
+    def  __init__(self,state,sensor,world=None,x_index=0,y_index=1,z_index=2,dim=3):
         self.state = state
         self.dynamics=None
         self.sensor=sensor
@@ -31,10 +31,10 @@ class Agent():
         self.state=state
         pos=self.getPos()
         self.sensor.pos=pos
-        bin=self.world.getAbstractPos(pos[0],pos[1])
+        #bin=self.world.getAbstractPos(pos[0],pos[1])
         detections=False
-        for tag in self.world.taglist:
-            detections+= self.sensor.detected(tag,time,bin,dim=self.dim)
+        #for tag in self.world.taglist:
+         #   detections+= self.sensor.detected(tag,time,bin,dim=self.dim)
         return detections
 		    
     def getPos(self):
