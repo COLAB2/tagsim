@@ -1,13 +1,4 @@
-def tagField(tagData,pos,t,time_step,sensorRange):
-    #last_ping=tagData[:,0],posx=tagData[:,1],posy=tagData[:,2],posz=tagData[:,3],delay=tagData[:,4],ID=tagData[:,5],bin=tagData[:,6]=tagData
-    #diff=tagData[:,1:3]-np.array([pos[0],pos[1]])
-    distance=np.linalg.norm(tagData[:,1:3]-np.array([pos[0],pos[1]]),axis=1)
-    eps=time_step/100.0
-    c1=(np.fmod(t,tagData[:,4]+eps)-(tagData[:,0]+tagData[:,4]))<time_step
-    c2=(np.fmod(t,tagData[:,4]+eps)>(tagData[:,0]+tagData[:,4]))
-    pinging = np.logical_and(c1,c2)
-    dtSet= np.logical_and(distance<sensorRange,pinging)
-    return tagData[np.where(pinging)[0],:],tagData[np.where(dtSet)[0],5],np.sum(dtSet)#pinging,detection set,detectionNum
+import numpy as np
 
 density_map = np.array([0.1, 0.1, 0.4, 0.3, 0.2,
             0.1, 0.3, 0.3, 0.1, 0.3,
@@ -15,6 +6,8 @@ density_map = np.array([0.1, 0.1, 0.4, 0.3, 0.2,
             0.3, 0.9, 0.3, 0.2, 0.1,
             0.2, 0.3, 0.2, 0.1, 0.1])
 #################################### simulation settings   ###################################
+ErgodicSocketInfo=('localhost', 8080)#('localhost', 5701)
+MidcaSocketInfo=('localhost', 5700)
 N = 100 #how many tags present
 simtime=1000 #max simulation time
 numAgents=1 #number of agents exploring
@@ -26,8 +19,6 @@ searchMethods = ["MIDCA","SUSD","ERGODIC_DI","DEMO","ERGODIC_SI"]
 method = searchMethods[0]
 fields= ["tag","gassian sum","rosenbrock","rastrigin"]
 fieldMax = [(5.5,14,1.5),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 #100
-#fieldMax = [(5.5,14,4),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 #500
-#fieldMax = [(5.5,14,7),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 #1000
 field = fields[0]
 fieldname="/Users/sravyakondrakunta/Documents/git/GracegridMIDCA/midca/domains/nbeacons/tagsim/tags_100"
 measurement_time = 2.0
@@ -63,4 +54,40 @@ stopOnMax = True
 visualize = True
 syncronize = True
 logData=True
+
 ###############################################################################################
+############################# test functions  ###############################################
+def rastrigin(x,y):
+    return 20+x**2+y**2-10*(np.cos(2*np.pi*x)+np.cos(2*np.pi*y))
+
+def rosenbrock(x,y):
+    a,b=(10,.001)
+    return b*(y-x**2)**2+(a-x)**2
+
+def gaussianSum(x,y):
+    r1 = np.array([.75*x_range,.45*y_range])
+    r2 = np.array([.3*x_range,.7*y_range])
+    loc = np.array([x,y])
+    return 10*np.exp(-0.05*np.linalg.norm(loc-r1)**2)+15*np.exp(-0.1*np.linalg.norm(loc-r2)**2)
+
+
+def tagField(tagData,pos,t,time_step,sensorRange):
+    #last_ping=tagData[:,0],posx=tagData[:,1],posy=tagData[:,2],posz=tagData[:,3],delay=tagData[:,4],ID=tagData[:,5],bin=tagData[:,6]=tagData
+    #diff=tagData[:,1:3]-np.array([pos[0],pos[1]])
+    distance=np.linalg.norm(tagData[:,1:3]-np.array([pos[0],pos[1]]),axis=1)
+    eps=time_step/100.0
+    c1=(np.fmod(t,tagData[:,4]+eps)-(tagData[:,0]+tagData[:,4]))<time_step
+    c2=(np.fmod(t,tagData[:,4]+eps)>(tagData[:,0]+tagData[:,4]))
+    pinging = np.logical_and(c1,c2)
+    dtSet= np.logical_and(distance<sensorRange,pinging)
+    return tagData[np.where(pinging)[0],:],tagData[np.where(dtSet)[0],5],np.sum(dtSet)#pinging,detection set,detectionNum
+
+def hotSpotCriteria(rate_param,mean_rate_param,max_rate_param,tau=1,a=0.5):
+    confidence=0
+    k_eval=int(np.floor((a*mean_rate_param+(1-a)*max_rate_param))*tau)
+    k=np.arange(k_eval)
+    k_fact=np.zeros_like(k)
+    for i in range(len(k_fact)):
+        k_fact[i] = np.math.factorial(k[i]))
+    confidence = np.divide(np.power(rate_param,k)*np.exp(-rate_param),k_fact)
+    return 1-confidence
