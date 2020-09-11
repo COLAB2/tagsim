@@ -7,7 +7,7 @@ density_map = np.array([0.1, 0.1, 0.4, 0.3, 0.2,
             0.2, 0.3, 0.2, 0.1, 0.1])
 #################################### simulation settings   ###################################
 ErgodicSocketInfo=('localhost', 8080)#('localhost', 5701)
-MidcaSocketInfo=('localhost', 5700)
+MidcaSocketInfo=('127.0.0.1', 5700)
 N = 100 #how many tags present
 simtime=1000 #max simulation time
 numAgents=1 #number of agents exploring
@@ -15,11 +15,9 @@ sensorRange=2
 x_range=20.0 #grid size
 y_range=20.0
 spacing=(1,1)#(.5,.5) #spacing between points for visualizing fields
-searchMethods = ["MIDCA","SUSD","ERGODIC_DI","DEMO","ERGODIC_SI"]
+searchMethods = ["MIDCA","DEMO","ERGODIC"]
 method = searchMethods[0]
-fields= ["tag","gassian sum","rosenbrock","rastrigin"]
 fieldMax = [(5.5,14,1.5),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 #100
-field = fields[0]
 fieldname="/Users/sravyakondrakunta/Documents/git/GracegridMIDCA/midca/domains/nbeacons/tagsim/tags_100"
 measurement_time = 2.0
 time_step=.5
@@ -52,7 +50,6 @@ start_pos = start_pos[int(sys.argv[1])]
 show_only_when_pinging=False
 stopOnMax = True
 visualize = True
-syncronize = True
 logData=True
 
 ###############################################################################################
@@ -82,7 +79,7 @@ def tagField(tagData,pos,t,time_step,sensorRange):
     dtSet= np.logical_and(distance<sensorRange,pinging)
     return tagData[np.where(pinging)[0],:],tagData[np.where(dtSet)[0],5],np.sum(dtSet)#pinging,detection set,detectionNum
 
-def hotSpotCriteria(rate_param,mean_rate_param,max_rate_param,tau=1,a=0.5):
+def hotSpotProbability(rate_param,mean_rate_param,max_rate_param,tau=1,a=0.5):
     confidence=0
     k_eval=int(np.floor((a*mean_rate_param+(1-a)*max_rate_param))*tau)
     k=np.arange(k_eval)
