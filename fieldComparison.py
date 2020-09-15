@@ -1088,7 +1088,7 @@ x_range=20.0 #grid size
 y_range=20.0
 spacing=(1,1)#(.5,.5) #spacing between points for visualizing fields
 searchMethods = ["MIDCA","SUSD","ERGODIC_DI","DEMO","ERGODIC_SI"]
-method = searchMethods[4]
+method = searchMethods[0]
 fields= ["tag","gassian sum","rosenbrock","rastrigin"]
 #fieldMax = [(5.5,14,1.5),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 #100 and sensorRange = 2
 #fieldMax = [(5.5,14,4),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 #500 and sensorRange = 2
@@ -1103,7 +1103,9 @@ fieldname="/Users/sravyakondrakunta/Documents/git/GracegridMIDCA/midca/domains/n
 measurement_time = 2.0
 time_step=.5
 #start_pos=(.95*x_range,.9*y_range)#(.05*x_range,.1*y_range)#
-start_pos = [(4.361675414742551382e+00, 1.458277069766090328e+01),
+"""
+start_pos = [
+             (4.361675414742551382e+00, 1.458277069766090328e+01),
              (1.545820006278236569e+01, 6.457247090829543623e+00),
              (6.295868290928718913e-01, 7.231587833833630796e+00),
              (1.125840547944832792e+01, 4.275635236417141272e-01),
@@ -1124,9 +1126,14 @@ start_pos = [(4.361675414742551382e+00, 1.458277069766090328e+01),
              (1.071787563199973192e+01, 6.014617171762742132e+00),
              (7.813659480510352751e+00, 3.109500212981364253e+00)
              ]
-print (int(sys.argv[1]))
-print (len(start_pos))
-
+"""
+start_pos = [
+            (2.0, 2.0), (2.0, 6.0), (2.0, 10.0), (2.0, 14.0), (2.0, 18.0),
+            (6.0, 2.0), (6.0, 6.0), (6.0, 10.0), (6.0, 14.0), (6.0, 18.0),
+            (10.0, 2.0), (10.0, 6.0), (10.0, 10.0), (10.0, 14.0), (10.0, 18.0),
+            (14.0, 2.0), (14.0, 6.0), (14.0, 10.0), (14.0, 14.0), (14.0, 18.0),
+            (18.0, 2.0), (18.0, 6.0), (18.0, 10.0), (18.0, 14.0), (18.0, 18.0)
+            ]
 start_pos = start_pos[int(sys.argv[1])]
 show_only_when_pinging=False
 stopOnMax = True
@@ -1244,7 +1251,7 @@ if method == searchMethods[0] and syncronize:
     # now do something with the clientsocket
     # in this case, we'll pretend this is a threaded server
     midcasock.bind(('127.0.0.1', 5700))
-    sock.connect(('localhost', 5701))
+    #sock.connect(('localhost', 5701))
     midcasock.listen(5)
 if method == searchMethods[0] and not syncronize:
     # now do something with the clientsocket
@@ -1306,9 +1313,9 @@ while t<=simtime:#or running: #change to better simulation stopping criteria
                 searchComplete = True
             u=singleIntegratorErgodicControl(agent,updateGP,scale=sc,offsets=off)
             if u[0]==0 and u[1]==0:
-				_,u=wp_track(agent.getPos(),[np.array([(off[0]+sc)/2,(off[1]+sc)/2])])
-			else:
-				u=np.arctan2(u[1],u[0])	
+                _,u=wp_track(agent.getPos(),[np.array([(off[0]+sc)/2,(off[1]+sc)/2])])
+            else:
+                u=np.arctan2(u[1],u[0])
             if updateGP:
                 updateGP=False
         state=simulate_dynamics(agent,u, [0,time_step],.1)

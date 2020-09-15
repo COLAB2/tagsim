@@ -241,8 +241,8 @@ if __name__ == "__main__":
 
 
 
-        tag = TagWorld()
-        tag.searchErgodic([3,4])
+        #tag = TagWorld()
+        #tag.searchErgodic([3,4])
 
         #move_and_search([3,0] , "3,0")
 
