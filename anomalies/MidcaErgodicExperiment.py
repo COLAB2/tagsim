@@ -523,7 +523,7 @@ u=0
 faultyMode=False
 reasons=["remora","wing"]
 explanation=""
-removeRemoraAction=True
+removeRemoraAction=False
 taglist=[]
 agentList=[]
 
@@ -581,12 +581,12 @@ stuck=[(0,0) for k in range(numAgents)]
 while t<=simtime:#or running: 
 	posx=np.zeros(numAgents)
 	posy=np.zeros(numAgents)
-	print(t)
+	#print(t)
 	for i in range(len(agentList)):
 		agent=agentList[i]
 		pos=agent.getPos()
 		temp = 1 if faultyMode else np.random.rand()
-		print(temp)
+		#print(temp)
 		if removeRemoraAction:
 			if  lost_steps[i]==0:
 				stuck[i]=pos
