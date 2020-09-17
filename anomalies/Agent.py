@@ -27,14 +27,16 @@ class Agent():
         # mode switch probability
         self.m_p = 0.0
 		
-    def updateAgent(self,state,time):
+    def updateAgent(self,state,time,dets=[]):
         self.state=state
         pos=self.getPos()
         self.sensor.pos=pos
-        #bin=self.world.getAbstractPos(pos[0],pos[1])
+        bin=self.world.getAbstractPos(pos[0],pos[1])
         detections=False
-        #for tag in self.world.taglist:
-         #   detections+= self.sensor.detected(tag,time,bin,dim=self.dim)
+        for tag in dets:
+            #self.sensor.detected(tag,time,bin)
+            self.sensor.detectionList.append((tag,time,pos,bin))
+            self.sensor.detectionSet.add((tag))
         return detections
 		    
     def getPos(self):
