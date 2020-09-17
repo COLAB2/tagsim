@@ -1081,9 +1081,9 @@ density_map = np.array([0.1, 0.1, 0.4, 0.3, 0.2,
             0.2, 0.3, 0.2, 0.1, 0.1])
 #################################### simulation settings   ###################################
 N = 1000 #how many tags present
-simtime=1000 #max simulation time
+simtime=500 #max simulation time
 numAgents=1 #number of agents exploring
-sensorRange=1.5
+sensorRange=2
 x_range=20.0 #grid size
 y_range=20.0
 spacing=(1,1)#(.5,.5) #spacing between points for visualizing fields
@@ -1094,16 +1094,16 @@ fields= ["tag","gassian sum","rosenbrock","rastrigin"]
 #fieldMax = [(5.5,14,4),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 #500 and sensorRange = 2
 #fieldMax = [(5.5,14,10),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 #500 and sensorRange = 2.5
 #fieldMax = [(5.5,14,8),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 #500 and sensorRange = 1.5
-#fieldMax = [(5.5,14,7),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 #1000 and sensorRange = 2
-fieldMax = [(5.5,14,14),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 #1000 and sensorRange = 2.5
+fieldMax = [(5.5,14,7),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 #1000 and sensorRange = 2
+#fieldMax = [(5.5,14,14),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 #1000 and sensorRange = 2.5
 #fieldMax = [(5.5,14,5),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 #1000 and sensorRange = 2.5
 
 field = fields[0]
-fieldname="/Users/sravyakondrakunta/Documents/git/GracegridMIDCA/midca/domains/nbeacons/tagsim/tags_1000"
+fieldname="/Users/sravyakondrakunta/Documents/git/GracegridMIDCA/midca/domains/nbeacons/tagsim/testFields/20x20/testField2_1000"
 measurement_time = 2.0
 time_step=.5
 #start_pos=(.95*x_range,.9*y_range)#(.05*x_range,.1*y_range)#
-"""
+
 start_pos = [
              (4.361675414742551382e+00, 1.458277069766090328e+01),
              (1.545820006278236569e+01, 6.457247090829543623e+00),
@@ -1126,6 +1126,7 @@ start_pos = [
              (1.071787563199973192e+01, 6.014617171762742132e+00),
              (7.813659480510352751e+00, 3.109500212981364253e+00)
              ]
+
 """
 start_pos = [
             (2.0, 2.0), (2.0, 6.0), (2.0, 10.0), (2.0, 14.0), (2.0, 18.0),
@@ -1134,6 +1135,7 @@ start_pos = [
             (14.0, 2.0), (14.0, 6.0), (14.0, 10.0), (14.0, 14.0), (14.0, 18.0),
             (18.0, 2.0), (18.0, 6.0), (18.0, 10.0), (18.0, 14.0), (18.0, 18.0)
             ]
+"""
 start_pos = start_pos[int(sys.argv[1])]
 show_only_when_pinging=False
 stopOnMax = True
@@ -1251,7 +1253,7 @@ if method == searchMethods[0] and syncronize:
     # now do something with the clientsocket
     # in this case, we'll pretend this is a threaded server
     midcasock.bind(('127.0.0.1', 5700))
-    #sock.connect(('localhost', 5701))
+    sock.connect(('localhost', 5701))
     midcasock.listen(5)
 if method == searchMethods[0] and not syncronize:
     # now do something with the clientsocket
@@ -1353,10 +1355,10 @@ while t<=simtime:#or running: #change to better simulation stopping criteria
                     endSim=True
 
                 # to stop in cell
-                pos = agent.getPos()
-                myx, myy = E.getCellXY(pos[0], pos[1])
-                if myx == 2 and myy == 4:
-                    endSim = True
+                #pos = agent.getPos()
+                #myx, myy = E.getCellXY(pos[0], pos[1])
+                #if myx == 2 and myy == 4:
+                #    endSim = True
 
                 agent.belief_count[bin]+=1
                 agent.belief_map[bin]= iterative_average(rate_meas,agent.belief_count[bin],round(agent.belief_map[bin],3))  #iteratively average rate measurement
