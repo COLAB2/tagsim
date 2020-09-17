@@ -36,6 +36,7 @@ class Agent():
         for tag in dets:
             #self.sensor.detected(tag,time,bin)
             self.sensor.detectionList.append((tag,time,pos,bin))
+            self.sensor.detectionSet.add((tag))
         return detections
 		    
     def getPos(self):
