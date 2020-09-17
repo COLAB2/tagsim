@@ -9,22 +9,23 @@ density_map = np.array([0.1, 0.1, 0.4, 0.3, 0.2,
 ErgodicSocketInfo=('localhost', 8080)#('localhost', 5701)
 MidcaSocketInfo=('127.0.0.1', 5700)
 N = 100 #how many tags present
-simtime=1000 #max simulation time
+simtime=50 #max simulation time
 numAgents=1 #number of agents exploring
-sensorRange=2
+sensorRange=2 #sensor radius
 x_range=20.0 #grid size
-y_range=20.0
+y_range=20.0 #grid size
 spacing=(1,1)#(.5,.5) #spacing between points for visualizing fields
 searchMethods = ["MIDCA","DEMO","ERGODIC"]
-method = searchMethods[0]
+method = searchMethods[1]
 fieldMax = [(5.5,14,1.5),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 #100
-fieldname="/Users/sravyakondrakunta/Documents/git/GracegridMIDCA/midca/domains/nbeacons/tagsim/tags_100"
-measurement_time = 2.0
+fieldname="tags_1000"#"/Users/sravyakondrakunta/Documents/git/GracegridMIDCA/midca/domains/nbeacons/tagsim/tags_100"
+measurement_time = 2.0 #time used for estimating poisoon rate parameter
 switchProb=5/100.0 #mode switch probability
 rvwProb=99/100.0 #remora vs wing loss probability (higher means remora attack more likely)
 remoraRemovalSuccess=0.5
-time_step=.5
-downTime = 10 #number of simulation steps you stay still after remora removal action
+time_step=.5 #simulation time step
+downTime = 20/time_step #number of simulation steps you stay still after remora removal action
+rng_seed = None #random seed number
 #start_pos=(.95*x_range,.9*y_range)#(.05*x_range,.1*y_range)#
 start_pos = [(4.361675414742551382e+00, 1.458277069766090328e+01),
              (1.545820006278236569e+01, 6.457247090829543623e+00),
@@ -47,14 +48,11 @@ start_pos = [(4.361675414742551382e+00, 1.458277069766090328e+01),
              (1.071787563199973192e+01, 6.014617171762742132e+00),
              (7.813659480510352751e+00, 3.109500212981364253e+00)
              ]
-print (int(sys.argv[1]))
-print (len(start_pos))
 
-start_pos = start_pos[int(sys.argv[1])]
-show_only_when_pinging=False
+show_only_when_pinging=True
 stopOnMax = True
 visualize = True
-logData=True
+logData=False
 
 ###############################################################################################
 ############################# test functions  ###############################################
@@ -89,6 +87,6 @@ def hotSpotProbability(rate_param,mean_rate_param,max_rate_param,tau=1,a=0.5):
     k=np.arange(k_eval)
     k_fact=np.zeros_like(k)
     for i in range(len(k_fact)):
-        k_fact[i] = np.math.factorial(k[i]))
+        k_fact[i] = np.math.factorial(k[i])
     confidence = np.divide(np.power(rate_param,k)*np.exp(-rate_param),k_fact)
     return 1-confidence
