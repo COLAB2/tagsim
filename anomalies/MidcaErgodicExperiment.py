@@ -639,6 +639,7 @@ while t<=simtime:#or running:
 		agent.updateAgent(state,t)
 		pos=agent.getPos()
 		pinging,detSet,dets=cfg.tagField(tagData,pos,t,time_step,sensorRange)
+		agent.updateAgent(state,t,dets=detSet)
 		#print(t,pinging.shape,dets,dets,detSet,agent.sensor.detectionSet)
 		allDetectionData = agent.sensor.detectionList  # history of every tag detection. includes (tag ID,time,agent pos,bin)
 		det_count[i]+=dets
