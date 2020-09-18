@@ -9,7 +9,8 @@ from Agent import Agent
 from AcousticReciever import AcousticReciever
 import socket
 import threading
-import simSettings as cfg
+#import simSettings as cfg
+import simSettings100x100 as cfg
 
 import traceback
 import sys
@@ -374,7 +375,7 @@ def MidcaIntegrator(agent,update):
 def singleIntegratorErgodicControl(agent,update,scale=None,offsets=None):
     global run,t,current_scale,current_offsets
     st=agent.state
-    print (offsets)
+    #print (offsets)
     if scale!=None:
         if current_scale != scale:
             sock.send(str.encode("change_scale "+str(scale)))
@@ -405,12 +406,13 @@ def singleIntegratorErgodicControl(agent,update,scale=None,offsets=None):
     data = sock.recv(1024)
     data = data.decode('utf-8')
     cmd=data.split(',')
-    print(data)
+    #print(data)
     if len(cmd)>1:
         u=(float(cmd[0]),float(cmd[1]))
         if st[0]>offsets[0]+scale or st[0]<offsets[0] or st[1]<offsets[1] or st[1]>offsets[1]+scale:
             _,utemp=wp_track(agent.getPos(),np.array([[offsets[0]+scale/2.0,offsets[1]+scale/2.0]]))
             u=np.clip(np.array([np.cos(utemp), np.sin(utemp)]),-1,1)
+            print("out of bounds")
         return u
 ######################################  helper functions ##################################      
 def draw(x):
@@ -488,7 +490,6 @@ def m1_stepDrift2(x,u):#small remora attack on other wing or lost wing
         return 0.5*np.array([np.cos(u), np.sin(u)])  
   
 	
-N = cfg.N
 simtime=cfg.simtime 
 numAgents=cfg.numAgents 
 sensorRange=cfg.sensorRange
@@ -533,7 +534,7 @@ taglist= E.loadTagList(fieldname) #E.setMap(density_map)
 tagData=np.genfromtxt(fieldname+".csv",delimiter=",")
 tagx=tagData[:,1]
 tagy=tagData[:,2]
-
+N=len(taglist)
 for i in range(numAgents):
     s= AcousticReciever(np.array([0,0,0]),sensorRange)
     agentList.append(Agent(np.array([start_pos[0],start_pos[1]]),s,E,dim=2))
@@ -597,6 +598,7 @@ while t<=simtime:#or running:
 					agent.dynamics=m1_step
 					faultyMode=False
 					explanation=""
+					print(t,"removing remora sucessful")
 				lost_steps[i]=0
 				removeRemoraAction=False
 		if temp<switchProb:
@@ -610,6 +612,7 @@ while t<=simtime:#or running:
 			else:
 				agent.dynamics=m1_stepDrift2
 				explanation=reasons[cfg.rvwProb<np.random.rand()]
+			print(t,explanation)
 		if (method==searchMethods[0]) and not searchMIDCAErgodic:
 			wp_list[i], u = wp_track(np.array(pos), wp_list[i])
 			MidcaIntegrator(agent, updateGP)
@@ -620,6 +623,10 @@ while t<=simtime:#or running:
 			wp_list[i], u = wp_track(np.array(pos), wp_list[i])
 		if method == searchMethods[2]:
 			u=singleIntegratorErgodicControl(agent,updateGP)
+			if u[0]==0 and u[1]==0:
+				_,u=wp_track(agent.getPos(),[np.array([(off[0]+sc)/2,(off[1]+sc)/2])])
+			else:
+				u=np.arctan2(u[1],u[0])	
 			if updateGP:
 				updateGP=False
 		
@@ -633,6 +640,9 @@ while t<=simtime:#or running:
 				u=np.arctan2(u[1],u[0])	
 				if updateGP:
 					updateGP=False
+		#if faultyMode and not removeRemoraAction:
+		#	removeRemoraAction=True
+		#	print("removing remora")
 		if removeRemoraAction:
 			_, u = wp_track(np.array(pos),  [np.array(stuck[i])])
 		state=simulate_dynamics(agent,u, [0,time_step],.1)
@@ -649,6 +659,7 @@ while t<=simtime:#or running:
 			dtSet=agent.sensor.detectionSet
 			rate_meas = len(dtSet)*1.0/measurement_time
 			latestMeas=rate_meas
+			print(t,latestMeas)
 			#if latestMeas >= fieldMax[0][2]:
 			 #   endSim=True
 			# to stop in cell
