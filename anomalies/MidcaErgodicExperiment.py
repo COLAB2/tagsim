@@ -13,6 +13,7 @@ import simSettings as cfg
 
 import traceback
 import sys
+from socket import error as socket_error
 
 p_list = None
 
@@ -26,6 +27,7 @@ mode = None
 start_ergodic_time = None
 stop_ergodic_time = None
 static_ergodic_time = 18
+anomaly_count = 0
 
 
 def find_max_5_values_avg(time):
@@ -526,6 +528,7 @@ y_range=cfg.y_range
 spacing=cfg.spacing
 searchMethods = cfg.searchMethods
 method = cfg.method
+anomaly_handling_method = cfg.anomaly_handling_method
 fieldMax = cfg.fieldMax
 fieldname = cfg.fieldname
 measurement_time = cfg.measurement_time
@@ -574,12 +577,15 @@ for i in range(numAgents):
 # create an INET, STREAMing socket
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 midcasock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+midcasock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
 if method == searchMethods[2]:
     # connect to ergodic controller
     sock.connect(cfg.ErgodicSocketInfo)
     sock.send(str.encode(str(x_range)))
-    #midcasock.bind(('127.0.0.1', 5700))
-    #midcasock.listen(5)
+    if anomaly_handling_method == "MIDCA":
+        midcasock.bind(('127.0.0.1', 5700))
+        midcasock.listen(5)
 
 if method == searchMethods[0]:
     # now do something with the clientsocket
@@ -636,16 +642,19 @@ while t <= simtime:  # or running:
                 agent.dynamics = m1_stepHalfSpeed
                 explanation = reasons[0]
                 mode = modes[1]
+                anomaly_count += 1
                 stop_ergodic_time = static_ergodic_time + 0.5 *static_ergodic_time
             elif temp / switchProb < 2 / 3.0:
                 agent.dynamics = m1_stepDrift1
                 explanation = reasons[cfg.rvwProb < np.random.rand()]
                 mode = modes[2]
+                anomaly_count += 1
                 stop_ergodic_time = static_ergodic_time + 0.5 *static_ergodic_time
             else:
                 agent.dynamics = m1_stepDrift2
                 explanation = reasons[cfg.rvwProb < np.random.rand()]
                 mode = modes[3]
+                anomaly_count += 1
                 stop_ergodic_time = static_ergodic_time + 0.5 *static_ergodic_time
 
         if (method == searchMethods[0]) and not searchMIDCAErgodic:
@@ -658,14 +667,12 @@ while t <= simtime:  # or running:
             wp_list[i], u = wp_track(np.array(pos), wp_list[i])
         if method == searchMethods[2]:
             u = singleIntegratorErgodicControl(agent, updateGP)
-            # Below line should be uncommented when using anomaly handling with midca
-            #MidcaIntegrator(agent, updateGP)
+            if anomaly_handling_method == "MIDCA":
+                MidcaIntegrator(agent, updateGP)
             if u[0] == 0 and u[1] == 0:
                 _, u = wp_track(agent.getPos(), [np.array([(off[0] + sc) / 2, (off[1] + sc) / 2])])
             else:
                 u = np.arctan2(u[1], u[0])
-            # if midca with ergodic is run uncomment it
-            #MidcaIntegrator(agent, updateGP)
 
             if updateGP:
                 updateGP = False
@@ -774,7 +781,7 @@ plt.pause(0.00001)
 
 if cfg.logData:
     f = open(method + "log.txt", 'a')
-    f.write(str(t) + "," + str(agent.getPos()) + "," + str(latestMeas) + "\n")
+    f.write(str(t) + "," + str(agent.getPos()) + "," + str(latestMeas) + "," + str(anomaly_count) +"\n")
     f.close()
-print(str(t) + "," + str(agent.getPos()) + "," + str(latestMeas), ", max val: ", maxMeas)
+print(str(t) + "," + str(agent.getPos()) + "," + str(latestMeas), ", max val: ", str(maxMeas) + ", anomaly count: ", str(anomaly_count))
 print('done')

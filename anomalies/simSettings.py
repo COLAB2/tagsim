@@ -8,35 +8,23 @@ density_map = np.array([0.1, 0.1, 0.4, 0.3, 0.2,
 #################################### simulation settings   ###################################
 ErgodicSocketInfo=('localhost', 5701)#('localhost', 8080)#('localhost', 5701)
 MidcaSocketInfo=('127.0.0.1', 5700)
-<<<<<<< HEAD
-N = 100 #how many tags present
-simtime=1000 #max simulation time
-=======
 #N = 500 #how many tags present
 simtime=600 #max simulation time
->>>>>>> c104e4fc96c93b47ed73fbc391e0fe8f1230c341
 numAgents=1 #number of agents exploring
 sensorRange=2 #sensor radius
 x_range=20.0 #grid size
 y_range=20.0 #grid size
 spacing=(1,1)#(.5,.5) #spacing between points for visualizing fields
 searchMethods = ["MIDCA","DEMO","ERGODIC"]
-method = searchMethods[2]
-<<<<<<< HEAD
+method = searchMethods[0]
+anomaly_handling_methods = ["MIDCA", "None"]
+anomaly_handling_method = anomaly_handling_methods[1]
 fieldMax = [(5.5,14,7),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 #100
 fieldname="/Users/sravyakondrakunta/Documents/git/GracegridMIDCA/midca/domains/nbeacons/tagsim/tags_1000"
 measurement_time = 2.0 #time used for estimating poisoon rate parameter
 switchProb=1/100.0 #mode switch probability
 rvwProb=100/100.0 #remora vs wing loss probability (higher means remora attack more likely)
 remoraRemovalSuccess=1
-=======
-fieldMax = [(5.5,14,1.5),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 #100
-fieldname="tags_1000"#"/Users/sravyakondrakunta/Documents/git/GracegridMIDCA/midca/domains/nbeacons/tagsim/tags_100"
-measurement_time = 2.0 #time used for estimating poisoon rate parameter
-switchProb=0*5/100.0 #mode switch probability
-rvwProb=99/100.0 #remora vs wing loss probability (higher means remora attack more likely)
-remoraRemovalSuccess=0.5
->>>>>>> c104e4fc96c93b47ed73fbc391e0fe8f1230c341
 time_step=.5 #simulation time step
 downTime = 5/time_step #number of simulation steps you stay still after remora removal action
 rng_seed = 555 #random seed number
