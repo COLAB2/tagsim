@@ -135,6 +135,32 @@ class TagWorld():
         except:
             return False
 
+    def get_mode(self):
+        try:
+            msg = "getMode"
+            self.sock.send(str.encode(str(msg)))
+            # collect tags
+            msg = self.sock.recv(2048)
+            return msg.decode('utf-8')
+        except:
+            return False
+
+    def remove_remora(self):
+        try:
+            msg = "removeRemora"
+            self.sock.send(str.encode(str(msg)))
+        except:
+            return False
+
+    def remove_remora_status(self):
+        try:
+            msg = "removeRemoraStatus"
+            self.sock.send(str.encode(str(msg)))
+            msg = self.sock.recv(2048)
+            return msg.decode('utf-8')
+        except:
+            return False
+
     def get_measurement(self, position):
         try:
             msg = "get_measurement," + str(position[0]+1) + "," + str(position[1]+1)
@@ -238,6 +264,9 @@ if __name__ == "__main__":
 
         tag = TagWorld()
         tag.runSim()
+
+        tag = TagWorld()
+        print (tag.get_mode())
 
 
 

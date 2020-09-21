@@ -1088,7 +1088,7 @@ x_range=20.0 #grid size
 y_range=20.0
 spacing=(1,1)#(.5,.5) #spacing between points for visualizing fields
 searchMethods = ["MIDCA","SUSD","ERGODIC_DI","DEMO","ERGODIC_SI"]
-method = searchMethods[0]
+method = searchMethods[4]
 fields= ["tag","gassian sum","rosenbrock","rastrigin"]
 #fieldMax = [(5.5,14,1.5),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 #100 and sensorRange = 2
 #fieldMax = [(5.5,14,4),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 #500 and sensorRange = 2
@@ -1099,7 +1099,7 @@ fieldMax = [(5.5,14,7),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 #1
 #fieldMax = [(5.5,14,5),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 #1000 and sensorRange = 2.5
 
 field = fields[0]
-fieldname="/Users/sravyakondrakunta/Documents/git/GracegridMIDCA/midca/domains/nbeacons/tagsim/testFields/20x20/testField2_1000"
+fieldname="/Users/sravyakondrakunta/Documents/git/GracegridMIDCA/midca/domains/nbeacons/tagsim/tags_1000"
 measurement_time = 2.0
 time_step=.5
 #start_pos=(.95*x_range,.9*y_range)#(.05*x_range,.1*y_range)#

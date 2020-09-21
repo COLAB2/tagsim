@@ -6,26 +6,26 @@ density_map = np.array([0.1, 0.1, 0.4, 0.3, 0.2,
             0.3, 0.9, 0.3, 0.2, 0.1,
             0.2, 0.3, 0.2, 0.1, 0.1])
 #################################### simulation settings   ###################################
-ErgodicSocketInfo=('localhost', 8080)#('localhost', 5701)
+ErgodicSocketInfo=('localhost', 5701)#('localhost', 8080)#('localhost', 5701)
 MidcaSocketInfo=('127.0.0.1', 5700)
 N = 100 #how many tags present
-simtime=50 #max simulation time
+simtime=1000 #max simulation time
 numAgents=1 #number of agents exploring
 sensorRange=2 #sensor radius
 x_range=20.0 #grid size
 y_range=20.0 #grid size
 spacing=(1,1)#(.5,.5) #spacing between points for visualizing fields
 searchMethods = ["MIDCA","DEMO","ERGODIC"]
-method = searchMethods[1]
-fieldMax = [(5.5,14,1.5),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 #100
-fieldname="tags_1000"#"/Users/sravyakondrakunta/Documents/git/GracegridMIDCA/midca/domains/nbeacons/tagsim/tags_100"
+method = searchMethods[2]
+fieldMax = [(5.5,14,7),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 #100
+fieldname="/Users/sravyakondrakunta/Documents/git/GracegridMIDCA/midca/domains/nbeacons/tagsim/tags_1000"
 measurement_time = 2.0 #time used for estimating poisoon rate parameter
-switchProb=5/100.0 #mode switch probability
-rvwProb=99/100.0 #remora vs wing loss probability (higher means remora attack more likely)
-remoraRemovalSuccess=0.5
+switchProb=1/100.0 #mode switch probability
+rvwProb=100/100.0 #remora vs wing loss probability (higher means remora attack more likely)
+remoraRemovalSuccess=1
 time_step=.5 #simulation time step
-downTime = 20/time_step #number of simulation steps you stay still after remora removal action
-rng_seed = None #random seed number
+downTime = 5/time_step #number of simulation steps you stay still after remora removal action
+rng_seed = 555 #random seed number
 #start_pos=(.95*x_range,.9*y_range)#(.05*x_range,.1*y_range)#
 start_pos = [(4.361675414742551382e+00, 1.458277069766090328e+01),
              (1.545820006278236569e+01, 6.457247090829543623e+00),
@@ -49,10 +49,10 @@ start_pos = [(4.361675414742551382e+00, 1.458277069766090328e+01),
              (7.813659480510352751e+00, 3.109500212981364253e+00)
              ]
 
-show_only_when_pinging=True
+show_only_when_pinging=False
 stopOnMax = True
 visualize = True
-logData=False
+logData=True
 
 ###############################################################################################
 ############################# test functions  ###############################################
