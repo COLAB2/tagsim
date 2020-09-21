@@ -9,6 +9,7 @@ from AcousticReciever import AcousticReciever
 import socket
 import threading
 import simSettings as cfg
+#import simSettings100x100 as cfg
 
 import traceback
 import sys
@@ -391,12 +392,11 @@ def MidcaIntegrator(agent, update):
     if len(cmd) >= 1:
         return
 
-
-def singleIntegratorErgodicControl(agent, update, scale=None, offsets=None):
-    global run, t, current_scale, current_offsets
-    st = agent.state
-    print (offsets)
-    if scale != None:
+def singleIntegratorErgodicControl(agent,update,scale=None,offsets=None):
+    global run,t,current_scale,current_offsets
+    st=agent.state
+    #print (offsets)
+    if scale!=None:
         if current_scale != scale:
             sock.send(str.encode("change_scale " + str(scale)))
             time.sleep(1)
@@ -428,13 +428,14 @@ def singleIntegratorErgodicControl(agent, update, scale=None, offsets=None):
         return
     data = sock.recv(1024)
     data = data.decode('utf-8')
-    cmd = data.split(',')
-    print(data)
-    if len(cmd) > 1:
-        u = (float(cmd[0]), float(cmd[1]))
-        if st[0] > offsets[0] + scale or st[0] < offsets[0] or st[1] < offsets[1] or st[1] > offsets[1] + scale:
-            _, utemp = wp_track(agent.getPos(), np.array([[offsets[0] + scale / 2.0, offsets[1] + scale / 2.0]]))
-            u = np.clip(np.array([np.cos(utemp), np.sin(utemp)]), -1, 1)
+    cmd=data.split(',')
+    #print(data)
+    if len(cmd)>1:
+        u=(float(cmd[0]),float(cmd[1]))
+        if st[0]>offsets[0]+scale or st[0]<offsets[0] or st[1]<offsets[1] or st[1]>offsets[1]+scale:
+            _,utemp=wp_track(agent.getPos(),np.array([[offsets[0]+scale/2.0,offsets[1]+scale/2.0]]))
+            u=np.clip(np.array([np.cos(utemp), np.sin(utemp)]),-1,1)
+            print("out of bounds")
         return u
 
 
@@ -502,36 +503,27 @@ def wp_track(x, wp_list):
         del wp_list[0]
 
     if len(wp_list) == 1:
-        searchComplete = True
-    return wp_list, 1 * np.arctan2(e[1], e[0])
+        searchComplete=True
+    return wp_list, 1*np.arctan2(e[1],e[0])
 
+########################   motion models  ###################################                  
+def m1_step(x,u):
+        return 1*np.array([np.cos(u), np.sin(u)])
+def m1_stepHalfSpeed(x,u):#big remora attack
+        return .5*np.array([np.cos(u), np.sin(u)])
+def m1_stepDrift1(x,u):#small remora attack on one wing or lost wing
+        u=u+.37
+        return 0.5*np.array([np.cos(u), np.sin(u)])
+def m1_stepDrift2(x,u):#small remora attack on other wing or lost wing
+        u=u-.37
+        return 0.5*np.array([np.cos(u), np.sin(u)])  
 
-########################   motion models  ###################################
-def m1_step(x, u):
-    return 1 * np.array([np.cos(u), np.sin(u)])
-
-
-def m1_stepHalfSpeed(x, u):  # big remora attack
-    return .5 * np.array([np.cos(u), np.sin(u)])
-
-
-def m1_stepDrift1(x, u):  # small remora attack on one wing or lost wing
-    u = u + .37
-    return 0.5 * np.array([np.cos(u), np.sin(u)])
-
-
-def m1_stepDrift2(x, u):  # small remora attack on other wing or lost wing
-    u = u - .37
-    return 0.5 * np.array([np.cos(u), np.sin(u)])
-
-
-N = cfg.N
-simtime = cfg.simtime
-numAgents = cfg.numAgents
-sensorRange = cfg.sensorRange
-x_range = cfg.x_range
-y_range = cfg.y_range
-spacing = cfg.spacing
+simtime=cfg.simtime 
+numAgents=cfg.numAgents 
+sensorRange=cfg.sensorRange
+x_range=cfg.x_range
+y_range=cfg.y_range
+spacing=cfg.spacing
 searchMethods = cfg.searchMethods
 method = cfg.method
 fieldMax = cfg.fieldMax
@@ -545,31 +537,32 @@ else:
     start_pos = cfg.start_pos[0]
 removalRate = cfg.remoraRemovalSuccess
 if cfg.rng_seed != None:
-    np.random.seed(cfg.rng_seed)
-t = 0
-last_meas = t
-run = False
-running = False
-searchComplete = False
-updateGP = False
-searchMIDCAErgodic = False
-latestMeas = 0
-sc = x_range
-off = (0, 0)
-u = 0
-faultyMode = False
-reasons = ["remora", "wing"]
-explanation = ""
-removeRemoraAction = False
-taglist = []
-agentList = []
+	np.random.seed(cfg.rng_seed)
+t=0
+last_meas=t
+run=False
+running=False
+searchComplete=False
+updateGP=False
+searchMIDCAErgodic=False
+latestMeas=0
+sc=x_range
+off=(0,0)
+u=0
+faultyMode=False
+reasons=["remora","wing"]
+explanation=""
+removeRemoraAction=False
+taglist=[]
+agentList=[]
 
-E = Grid(taglist, x_range=x_range, y_range=y_range)
-taglist = E.loadTagList(fieldname)  # E.setMap(density_map)
-tagData = np.genfromtxt(fieldname + ".csv", delimiter=",")
-tagx = tagData[:, 1]
-tagy = tagData[:, 2]
 
+E = Grid(taglist,x_range=x_range, y_range=y_range)
+taglist= E.loadTagList(fieldname) #E.setMap(density_map)
+tagData=np.genfromtxt(fieldname+".csv",delimiter=",")
+tagx=tagData[:,1]
+tagy=tagData[:,2]
+N=len(taglist)
 for i in range(numAgents):
     s = AcousticReciever(np.array([0, 0, 0]), sensorRange)
     agentList.append(Agent(np.array([start_pos[0], start_pos[1]]), s, E, dim=2))
@@ -665,6 +658,7 @@ while t <= simtime:  # or running:
             wp_list[i], u = wp_track(np.array(pos), wp_list[i])
         if method == searchMethods[2]:
             u = singleIntegratorErgodicControl(agent, updateGP)
+            # Below line should be uncommented when using anomaly handling with midca
             #MidcaIntegrator(agent, updateGP)
             if u[0] == 0 and u[1] == 0:
                 _, u = wp_track(agent.getPos(), [np.array([(off[0] + sc) / 2, (off[1] + sc) / 2])])
@@ -737,7 +731,6 @@ while t <= simtime:  # or running:
     plt.pause(0.00001)  # plt.pause(time_step)
     if endSim and cfg.stopOnMax:
         break
-
 ################################################ end simulation loop ####################################
 ################################################ final plots       ######################################
 run = False
