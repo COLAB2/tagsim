@@ -451,7 +451,7 @@ def iterative_average(x,n,ave):
 def simulate_dynamics(agent,u,tspan,dt):
     inc = agent.state
     for i in np.linspace(tspan[0],tspan[1],int((tspan[1]-tspan[0])/dt)):
-        inc+=agent.dynamics(inc,u)*dt#+world.flow(agent.getPos())*dt
+        inc+=agent.speedMultiplier*agent.dynamics(inc,u)*dt#+world.flow(agent.getPos())*dt
     return inc
 
 def search(wp_list,X):
@@ -481,13 +481,13 @@ def wp_track(x,wp_list):
 def m1_step(x,u):
         return 1*np.array([np.cos(u), np.sin(u)])
 def m1_stepHalfSpeed(x,u):#big remora attack
-        return .5*np.array([np.cos(u), np.sin(u)])
+        return 1*np.array([np.cos(u), np.sin(u)])
 def m1_stepDrift1(x,u):#small remora attack on one wing or lost wing
         u=u+.37
-        return 0.5*np.array([np.cos(u), np.sin(u)])
+        return 1*np.array([np.cos(u), np.sin(u)])
 def m1_stepDrift2(x,u):#small remora attack on other wing or lost wing
         u=u-.37
-        return 0.5*np.array([np.cos(u), np.sin(u)])  
+        return 1*np.array([np.cos(u), np.sin(u)])  
   
 	
 simtime=cfg.simtime 
@@ -523,7 +523,7 @@ off=(0,0)
 u=0
 faultyMode=False
 reasons=["remora","wing"]
-explanation=""
+explanation=set()
 removeRemoraAction=False
 taglist=[]
 agentList=[]
@@ -535,11 +535,15 @@ tagData=np.genfromtxt(fieldname+".csv",delimiter=",")
 tagx=tagData[:,1]
 tagy=tagData[:,2]
 N=len(taglist)
+#speedMultiplier=[]
+#removalSuccessMultiplier=[]
 for i in range(numAgents):
-    s= AcousticReciever(np.array([0,0,0]),sensorRange)
-    agentList.append(Agent(np.array([start_pos[0],start_pos[1]]),s,E,dim=2))
-    agentList[i].dynamics=m1_step
-    agentList[i].remora = 1    
+	s= AcousticReciever(np.array([0,0,0]),sensorRange)
+	agentList.append(Agent(np.array([start_pos[0],start_pos[1]]),s,E,dim=2))
+	agentList[i].dynamics=m1_step
+	agentList[i].speedMultiplier=1
+	agentList[i].removalSuccessMultiplier=1
+	agentList[i].remoraAttacks = 0  
         
         
   #########################  socket threads ###############################################
@@ -586,7 +590,7 @@ while t<=simtime:#or running:
 	for i in range(len(agentList)):
 		agent=agentList[i]
 		pos=agent.getPos()
-		temp = 1 if faultyMode else np.random.rand()
+		temp = np.random.rand()
 		#print(temp)
 		if removeRemoraAction:
 			if  lost_steps[i]==0:
@@ -594,25 +598,41 @@ while t<=simtime:#or running:
 			lost_steps[i]+=1
 			#print(lost_steps[i])
 			if lost_steps[i]>=cfg.downTime:
-				if np.random.rand()<removalRate and explanation!=reasons[1]:
+				if np.random.rand()<removalRate*agent.removalSuccessMultiplier and reasons[1] not in explanation:
 					agent.dynamics=m1_step
+					agent.speedMultiplier=1
+					agent.removalSuccessMultiplier=1
 					faultyMode=False
-					explanation=""
-					print(t,"removing remora sucessful")
+					explanation=set()
+					#print(t,"removing remora sucessful")
+				elif np.random.rand()<removalRate*agent.removalSuccessMultiplier:
+					explanation.remove(reasons[0])
+					agent.removalSuccessMultiplier=1
+					agent.speedMultiplier=1
 				lost_steps[i]=0
 				removeRemoraAction=False
 		if temp<switchProb:
 			faultyMode = True
+			agent.remoraAttacks+=1
 			if temp/switchProb<1/3.0:
-				agent.dynamics=m1_stepHalfSpeed
-				explanation=reasons[0]
+				agent.removalSuccessMultiplier=agent.removalSuccessMultiplier*cfg.RRDR
+				agent.speedMultiplier=agent.speedMultiplier*cfg.RSDR
+				explanation.add(reasons[0])
 			elif temp/switchProb<2/3.0:
+				nr = reasons[cfg.rvwProb<np.random.rand()]
+				explanation.add(nr)
+				if nr == reasons[0]:
+					agent.removalSuccessMultiplier=agent.removalSuccessMultiplier*cfg.RRDR
+					agent.speedMultiplier=agent.speedMultiplier*cfg.RSDR
 				agent.dynamics=m1_stepDrift1
-				explanation=reasons[cfg.rvwProb<np.random.rand()]
 			else:
+				nr = reasons[cfg.rvwProb<np.random.rand()]
+				explanation.add(nr)
+				if nr == reasons[0]:
+					agent.removalSuccessMultiplier=agent.removalSuccessMultiplier*cfg.RRDR
+					agent.speedMultiplier=agent.speedMultiplier*cfg.RSDR
 				agent.dynamics=m1_stepDrift2
-				explanation=reasons[cfg.rvwProb<np.random.rand()]
-			print(t,explanation)
+			print(t,"explanation set: ",explanation,", ",agent.remoraAttacks," attacks")
 		if (method==searchMethods[0]) and not searchMIDCAErgodic:
 			wp_list[i], u = wp_track(np.array(pos), wp_list[i])
 			MidcaIntegrator(agent, updateGP)
