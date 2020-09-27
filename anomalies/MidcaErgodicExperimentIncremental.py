@@ -632,7 +632,7 @@ while t<=simtime:#or running:
 					agent.removalSuccessMultiplier=agent.removalSuccessMultiplier*cfg.RRDR
 					agent.speedMultiplier=agent.speedMultiplier*cfg.RSDR
 				agent.dynamics=m1_stepDrift2
-			print(t,"explanation set: ",explanation,", ",agent.remoraAttacks," attacks")
+			print(t,"explanation set: ",explanation,", ",agent.remoraAttacks," attacks, speedMultiplier: ",agent.speedMultiplier, ", removal success probability: ",agent.removalSuccessMultiplier*removalRate)
 		if (method==searchMethods[0]) and not searchMIDCAErgodic:
 			wp_list[i], u = wp_track(np.array(pos), wp_list[i])
 			MidcaIntegrator(agent, updateGP)
