@@ -6,7 +6,7 @@ density_map = np.array([0.1, 0.1, 0.4, 0.3, 0.2,
             0.3, 0.9, 0.3, 0.2, 0.1,
             0.2, 0.3, 0.2, 0.1, 0.1])
 #################################### simulation settings   ###################################
-ErgodicSocketInfo=('localhost', 5701)#('localhost', 8080)#('localhost', 5701)
+ErgodicSocketInfo=('localhost', 8080)#('localhost', 5701)
 MidcaSocketInfo=('127.0.0.1', 5700)
 #N = 500 #how many tags present
 simtime=600 #max simulation time
@@ -20,14 +20,16 @@ method = searchMethods[0]
 anomaly_handling_methods = ["MIDCA", "None"]
 anomaly_handling_method = anomaly_handling_methods[0]
 fieldMax = [(5.5,14,7),(.3*x_range,.7*y_range,14)]#tag field absolute max 9.5 #100
-fieldname="/Users/sravyakondrakunta/Documents/git/GracegridMIDCA/midca/domains/nbeacons/tagsim/tags_1000"
+fieldname="/Users/sravyakondrakunta/Documents/git/GracegridMIDCA/midca/domains/nbeacons/tagsim/tags_1000"#"tags_1000
 measurement_time = 2.0 #time used for estimating poisoon rate parameter
-switchProb=1/100.0 #mode switch probability
-rvwProb=100/100.0 #remora vs wing loss probability (higher means remora attack more likely)
-remoraRemovalSuccess=1
+switchProb=0*5/100.0 #mode switch probability
+rvwProb=99/100.0 #remora vs wing loss probability (higher means remora attack more likely)
+remoraRemovalSuccess=0.5
+RRDR=.9 #remora removal decay rate (remora removal success multiplied by this constant every time remora attacks)
+RSDR=.9 #remora speed decay rate (speed multiplied by this constant every time remora attacks)
 time_step=.5 #simulation time step
-downTime = 5/time_step #number of simulation steps you stay still after remora removal action
-rng_seed = 555 #random seed number
+downTime = 20/time_step #number of simulation steps you stay still after remora removal action
+rng_seed = None #random seed number
 #start_pos=(.95*x_range,.9*y_range)#(.05*x_range,.1*y_range)#
 
 start_pos = [(4.361675414742551382e+00, 1.458277069766090328e+01),
@@ -68,10 +70,10 @@ start_pos = [(4.361675414742551382e+00, 1.458277069766090328e+01),
             (17.25, 18.25), (19.25, 3.25), (15.25, 8.25), (9.25, 10.25), (2.25, 1.25)
             ]
 
-show_only_when_pinging=False
+show_only_when_pinging=True
 stopOnMax = True
 visualize = True
-logData=True
+logData=False
 
 ###############################################################################################
 ############################# test functions  ###############################################
