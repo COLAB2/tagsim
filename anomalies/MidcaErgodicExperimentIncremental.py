@@ -9,8 +9,8 @@ from Agent import Agent
 from AcousticReciever import AcousticReciever
 import socket
 import threading
-#import simSettings as cfg
-import simSettings100x100 as cfg
+import simSettings as cfg
+#import simSettings100x100 as cfg
 
 import traceback
 import sys
@@ -22,6 +22,13 @@ allMeasurementData = []
 endSim = False			  
 current_scale = None
 current_offsets = None
+modes = ["m1", "m2", "m3", "m4"]
+mode = None
+start_ergodic_time = None
+stop_ergodic_time = None
+static_ergodic_time = 18
+anomaly_count = 0
+anomaly_history = []
 
 def find_max_5_values_avg(time):
     a = {}
@@ -121,7 +128,11 @@ def MidcaIntegrator(agent,update):
         searchMIDCAErgodic = True
         if len(cmd) >= 4:
             sc = xrange if cmd[3] == 'fullGrid' else x_range / 5.0
+        start_ergodic_time = t
         # searchComplete = False
+
+    elif cmd[0] == 'searchErgodicComplete':
+        clientsocket.send(str.encode(str(not(searchMIDCAErgodic))))
 
     elif cmd[0] == 'quitSearchErgodic':
         searchMIDCAErgodic = False
@@ -489,7 +500,7 @@ def m1_stepDrift2(x,u):#small remora attack on other wing or lost wing
         u=u-.37
         return 1*np.array([np.cos(u), np.sin(u)])  
   
-	
+
 simtime=cfg.simtime 
 numAgents=cfg.numAgents 
 sensorRange=cfg.sensorRange
@@ -497,6 +508,7 @@ x_range=cfg.x_range
 y_range=cfg.y_range
 spacing=cfg.spacing
 searchMethods = cfg.searchMethods
+anomaly_handling_method = cfg.anomaly_handling_method
 method = cfg.method
 fieldMax = cfg.fieldMax
 fieldname=cfg.fieldname
@@ -504,12 +516,12 @@ measurement_time = cfg.measurement_time
 time_step= cfg.time_step
 switchProb=cfg.switchProb
 if len(sys.argv)>1:
-	start_pos = cfg.start_pos[int(sys.argv[1])]
+    start_pos = cfg.start_pos[int(sys.argv[1])]
 else:
-	start_pos = cfg.start_pos[0]
+    start_pos = cfg.start_pos[0]
 removalRate=cfg.remoraRemovalSuccess
 if cfg.rng_seed != None:
-	np.random.seed(cfg.rng_seed)
+    np.random.seed(cfg.rng_seed)
 t=0
 last_meas=t
 run=False
@@ -538,12 +550,12 @@ N=len(taglist)
 #speedMultiplier=[]
 #removalSuccessMultiplier=[]
 for i in range(numAgents):
-	s= AcousticReciever(np.array([0,0,0]),sensorRange)
-	agentList.append(Agent(np.array([start_pos[0],start_pos[1]]),s,E,dim=2))
-	agentList[i].dynamics=m1_step
-	agentList[i].speedMultiplier=1
-	agentList[i].removalSuccessMultiplier=1
-	agentList[i].remoraAttacks = 0  
+    s= AcousticReciever(np.array([0,0,0]),sensorRange)
+    agentList.append(Agent(np.array([start_pos[0],start_pos[1]]),s,E,dim=2))
+    agentList[i].dynamics=m1_step
+    agentList[i].speedMultiplier=1
+    agentList[i].removalSuccessMultiplier=1
+    agentList[i].remoraAttacks = 0
         
         
   #########################  socket threads ###############################################
@@ -584,132 +596,155 @@ maxMeas=0
 lost_steps=[0 for k in range(numAgents)]
 stuck=[(0,0) for k in range(numAgents)]
 while t<=simtime:#or running: 
-	posx=np.zeros(numAgents)
-	posy=np.zeros(numAgents)
-	#print(t)
-	for i in range(len(agentList)):
-		agent=agentList[i]
-		pos=agent.getPos()
-		temp = np.random.rand()
-		#print(temp)
-		if removeRemoraAction:
-			if  lost_steps[i]==0:
-				stuck[i]=pos
-			lost_steps[i]+=1
-			#print(lost_steps[i])
-			if lost_steps[i]>=cfg.downTime:
-				if np.random.rand()<removalRate*agent.removalSuccessMultiplier and reasons[1] not in explanation:
-					agent.dynamics=m1_step
-					agent.speedMultiplier=1
-					agent.removalSuccessMultiplier=1
-					faultyMode=False
-					explanation=set()
-					#print(t,"removing remora sucessful")
-				elif np.random.rand()<removalRate*agent.removalSuccessMultiplier:
-					explanation.remove(reasons[0])
-					agent.removalSuccessMultiplier=1
-					agent.speedMultiplier=1
-				lost_steps[i]=0
-				removeRemoraAction=False
-		if temp<switchProb:
-			faultyMode = True
-			agent.remoraAttacks+=1
-			if temp/switchProb<1/3.0:
-				agent.removalSuccessMultiplier=agent.removalSuccessMultiplier*cfg.RRDR
-				agent.speedMultiplier=agent.speedMultiplier*cfg.RSDR
-				explanation.add(reasons[0])
-			elif temp/switchProb<2/3.0:
-				nr = reasons[cfg.rvwProb<np.random.rand()]
-				explanation.add(nr)
-				if nr == reasons[0]:
-					agent.removalSuccessMultiplier=agent.removalSuccessMultiplier*cfg.RRDR
-					agent.speedMultiplier=agent.speedMultiplier*cfg.RSDR
-				agent.dynamics=m1_stepDrift1
-			else:
-				nr = reasons[cfg.rvwProb<np.random.rand()]
-				explanation.add(nr)
-				if nr == reasons[0]:
-					agent.removalSuccessMultiplier=agent.removalSuccessMultiplier*cfg.RRDR
-					agent.speedMultiplier=agent.speedMultiplier*cfg.RSDR
-				agent.dynamics=m1_stepDrift2
-			print(t,"explanation set: ",explanation,", ",agent.remoraAttacks," attacks, speedMultiplier: ",agent.speedMultiplier, ", removal success probability: ",agent.removalSuccessMultiplier*removalRate)
-		if (method==searchMethods[0]) and not searchMIDCAErgodic:
-			wp_list[i], u = wp_track(np.array(pos), wp_list[i])
-			MidcaIntegrator(agent, updateGP)
-			print(t, pos, u, latestMeas)
-			if updateGP:
-				updateGP = False
-		if method == searchMethods[1]:
-			wp_list[i], u = wp_track(np.array(pos), wp_list[i])
-		if method == searchMethods[2]:
-			u=singleIntegratorErgodicControl(agent,updateGP)
-			if u[0]==0 and u[1]==0:
-				_,u=wp_track(agent.getPos(),[np.array([(off[0]+sc)/2,(off[1]+sc)/2])])
-			else:
-				u=np.arctan2(u[1],u[0])	
-			if updateGP:
-				updateGP=False
-		
-		if searchMIDCAErgodic:
-			#off=(round(np.random.rand()*4)*x_range/5.0,round(np.random.rand()*4)*x_range/5.0)
-			#sc=x_range/5.0
-			u=singleIntegratorErgodicControl(agent,updateGP,scale=sc,offsets=off)
-			if u[0]==0 and u[1]==0:
-				_,u=wp_track(agent.getPos(),[np.array([(off[0]+sc)/2,(off[1]+sc)/2])])
-			else:
-				u=np.arctan2(u[1],u[0])	
-				if updateGP:
-					updateGP=False
-		#if faultyMode and not removeRemoraAction:
-		#	removeRemoraAction=True
-		#	print("removing remora")
-		if removeRemoraAction:
-			_, u = wp_track(np.array(pos),  [np.array(stuck[i])])
-		state=simulate_dynamics(agent,u, [0,time_step],.1)
-		agent.updateAgent(state,t)
-		pos=agent.getPos()
-		pinging,detSet,dets=cfg.tagField(tagData,pos,t,time_step,sensorRange)
-		agent.updateAgent(state,t,dets=detSet)
-		#print(t,pinging.shape,dets,dets,detSet,agent.sensor.detectionSet)
-		allDetectionData = agent.sensor.detectionList  # history of every tag detection. includes (tag ID,time,agent pos,bin)
-		det_count[i]+=dets
-		if last_meas+measurement_time<=t:
-			updateGP = True
-			bin=E.getAbstractPos(pos[0],pos[1])-1
-			dtSet=agent.sensor.detectionSet
-			rate_meas = len(dtSet)*1.0/measurement_time
-			latestMeas=rate_meas
-			print(t,latestMeas)
-			#if latestMeas >= fieldMax[0][2]:
-			 #   endSim=True
-			# to stop in cell
-			#pos = agent.getPos()
-			#myx, myy = E.getCellXY(pos[0], pos[1])
-			#if myx == 2 and myy == 4:
-			#    endSim = True
-			agent.belief_count[bin]+=1
-			agent.belief_map[bin]= iterative_average(rate_meas,agent.belief_count[bin],round(agent.belief_map[bin],3))  #iteratively average rate measurement
-			if len(agent.sensor.detectionSet)>0:
-				agent.sensor.detectionSet=set()
-		posx[i]=pos[0]
-		posy[i]=pos[1]
-	plt.clf()
-    #print(t,pos,u,latestMeas)
-	if last_meas+measurement_time<=t:
-		last_meas=t
+    posx=np.zeros(numAgents)
+    posy=np.zeros(numAgents)
+    #print(t)
+    for i in range(len(agentList)):
+        agent=agentList[i]
+        pos=agent.getPos()
+        temp = np.random.rand()
+        #print(temp)
+        if removeRemoraAction:
+            if  lost_steps[i]==0:
+                stuck[i]=pos
+            lost_steps[i]+=1
+            #print(lost_steps[i])
+            if lost_steps[i]>=cfg.downTime:
+                if np.random.rand()<removalRate*agent.removalSuccessMultiplier and reasons[1] not in explanation:
+                    agent.dynamics=m1_step
+                    agent.speedMultiplier=1
+                    agent.removalSuccessMultiplier=1
+                    faultyMode=False
+                    explanation=set()
+                    mode = modes[0]
+                    stop_ergodic_time = static_ergodic_time
+                    #print(t,"removing remora sucessful")
+                elif np.random.rand()<removalRate*agent.removalSuccessMultiplier:
+                    explanation.remove(reasons[0])
+                    agent.removalSuccessMultiplier=1
+                    agent.speedMultiplier=1
+                lost_steps[i]=0
+                removeRemoraAction=False
+        if temp<switchProb:
+            faultyMode = True
+            agent.remoraAttacks+=1
+            if temp/switchProb<1/3.0:
+                agent.removalSuccessMultiplier=agent.removalSuccessMultiplier*cfg.RRDR
+                agent.speedMultiplier=agent.speedMultiplier*cfg.RSDR
+                explanation.add(reasons[0])
+                mode = modes[3]
+                anomaly_count += 1
+                anomaly_history.append(mode)
+                stop_ergodic_time = static_ergodic_time + 0.7 *static_ergodic_time
 
-	if cfg.show_only_when_pinging and cfg.visualize:
-		draw((pinging[:,1],pinging[:,2]))
-	elif cfg.visualize:
-		draw((tagx,tagy))
-	if maxMeas<latestMeas:
-		maxMeas=latestMeas
-	t+=time_step
-	if cfg.visualize:
-		drawAgent((posx,posy),r=sensorRange)
-	plt.pause(0.00001)#plt.pause(time_step)
-	if endSim and cfg.stopOnMax:
-		break
+            elif temp/switchProb<2/3.0:
+                nr = reasons[cfg.rvwProb<np.random.rand()]
+                explanation.add(nr)
+                if nr == reasons[0]:
+                    agent.removalSuccessMultiplier=agent.removalSuccessMultiplier*cfg.RRDR
+                    agent.speedMultiplier=agent.speedMultiplier*cfg.RSDR
+                agent.dynamics=m1_stepDrift1
+                mode = modes[2]
+                anomaly_count += 1
+                anomaly_history.append(mode)
+                stop_ergodic_time = static_ergodic_time + 0.5 *static_ergodic_time
+
+            else:
+                nr = reasons[cfg.rvwProb<np.random.rand()]
+                explanation.add(nr)
+                if nr == reasons[0]:
+                    agent.removalSuccessMultiplier=agent.removalSuccessMultiplier*cfg.RRDR
+                    agent.speedMultiplier=agent.speedMultiplier*cfg.RSDR
+                agent.dynamics=m1_stepDrift2
+                mode = modes[1]
+                anomaly_count += 1
+                anomaly_history.append(mode)
+                stop_ergodic_time = static_ergodic_time + 0.5 *static_ergodic_time
+            print(t,"explanation set: ",explanation,", ",agent.remoraAttacks," attacks, speedMultiplier: ",agent.speedMultiplier, ", removal success probability: ",agent.removalSuccessMultiplier*removalRate)
+        if (method==searchMethods[0]) and not searchMIDCAErgodic:
+            wp_list[i], u = wp_track(np.array(pos), wp_list[i])
+            MidcaIntegrator(agent, updateGP)
+            print(t, pos, u, latestMeas)
+            if updateGP:
+                updateGP = False
+        if method == searchMethods[1]:
+            wp_list[i], u = wp_track(np.array(pos), wp_list[i])
+        if method == searchMethods[2]:
+            u=singleIntegratorErgodicControl(agent,updateGP)
+            if anomaly_handling_method == "MIDCA":
+                MidcaIntegrator(agent, updateGP)
+            if u[0]==0 and u[1]==0:
+                _,u=wp_track(agent.getPos(),[np.array([(off[0]+sc)/2,(off[1]+sc)/2])])
+            else:
+                u=np.arctan2(u[1],u[0])
+            if updateGP:
+                updateGP=False
+
+        if searchMIDCAErgodic:
+            #off=(round(np.random.rand()*4)*x_range/5.0,round(np.random.rand()*4)*x_range/5.0)
+            #sc=x_range/5.0
+            if (t - start_ergodic_time) > stop_ergodic_time:
+                searchMIDCAErgodic = False
+            u=singleIntegratorErgodicControl(agent,updateGP,scale=sc,offsets=off)
+            MidcaIntegrator(agent, updateGP)
+            if u[0]==0 and u[1]==0:
+                _,u=wp_track(agent.getPos(),[np.array([(off[0]+sc)/2,(off[1]+sc)/2])])
+            else:
+                u=np.arctan2(u[1],u[0])
+                if updateGP:
+                    updateGP=False
+        #if faultyMode and not removeRemoraAction:
+        #	removeRemoraAction=True
+        #	print("removing remora")
+        if removeRemoraAction:
+            _, u = wp_track(np.array(pos),  [np.array(stuck[i])])
+        state=simulate_dynamics(agent,u, [0,time_step],.1)
+        agent.updateAgent(state,t)
+        pos=agent.getPos()
+        pinging,detSet,dets=cfg.tagField(tagData,pos,t,time_step,sensorRange)
+        agent.updateAgent(state,t,dets=detSet)
+        #print(t,pinging.shape,dets,dets,detSet,agent.sensor.detectionSet)
+        allDetectionData = agent.sensor.detectionList  # history of every tag detection. includes (tag ID,time,agent pos,bin)
+        det_count[i]+=dets
+        if last_meas+measurement_time<=t:
+            updateGP = True
+            bin=E.getAbstractPos(pos[0],pos[1])-1
+            dtSet=agent.sensor.detectionSet
+            rate_meas = len(dtSet)*1.0/measurement_time
+            latestMeas=rate_meas
+            if latestMeas >= fieldMax[0][2]:
+                endSim = True
+            print(t,latestMeas)
+            #if latestMeas >= fieldMax[0][2]:
+             #   endSim=True
+            # to stop in cell
+            #pos = agent.getPos()
+            #myx, myy = E.getCellXY(pos[0], pos[1])
+            #if myx == 2 and myy == 4:
+            #    endSim = True
+            agent.belief_count[bin]+=1
+            agent.belief_map[bin]= iterative_average(rate_meas,agent.belief_count[bin],round(agent.belief_map[bin],3))  #iteratively average rate measurement
+            if len(agent.sensor.detectionSet)>0:
+                agent.sensor.detectionSet=set()
+        posx[i]=pos[0]
+        posy[i]=pos[1]
+    plt.clf()
+    #print(t,pos,u,latestMeas)
+    if last_meas+measurement_time<=t:
+        last_meas=t
+
+    if cfg.show_only_when_pinging and cfg.visualize:
+        draw((pinging[:,1],pinging[:,2]))
+    elif cfg.visualize:
+        draw((tagx,tagy))
+    if maxMeas<latestMeas:
+        maxMeas=latestMeas
+    t+=time_step
+    if cfg.visualize:
+        drawAgent((posx,posy),r=sensorRange)
+    plt.pause(0.00001)#plt.pause(time_step)
+    if endSim and cfg.stopOnMax:
+        break
 
 
 ################################################ end simulation loop ####################################
@@ -759,4 +794,3 @@ if cfg.logData:
     f.close()
 print(str(t)+","+str(agent.getPos())+","+str(latestMeas),", max val: ",maxMeas)
 print('done')
-input()
