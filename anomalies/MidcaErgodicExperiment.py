@@ -28,6 +28,7 @@ start_ergodic_time = None
 stop_ergodic_time = None
 static_ergodic_time = 18
 anomaly_count = 0
+anomaly_history = []
 
 
 def find_max_5_values_avg(time):
@@ -142,8 +143,10 @@ def MidcaIntegrator(agent, update):
         searchMIDCAErgodic = True
         if len(cmd) >= 4:
             sc = xrange if cmd[3] == 'fullGrid' else x_range / 5.0
-        # searchComplete = False
         start_ergodic_time = t
+
+    elif cmd[0] == 'searchErgodicComplete':
+        clientsocket.send(str.encode(str(not(searchMIDCAErgodic))))
 
     elif cmd[0] == 'quitSearchErgodic':
         searchMIDCAErgodic = False
@@ -518,7 +521,30 @@ def m1_stepDrift1(x,u):#small remora attack on one wing or lost wing
         return 0.5*np.array([np.cos(u), np.sin(u)])
 def m1_stepDrift2(x,u):#small remora attack on other wing or lost wing
         u=u-.37
-        return 0.5*np.array([np.cos(u), np.sin(u)])  
+        return 0.5*np.array([np.cos(u), np.sin(u)])
+
+########################   switch mode  ###################################
+def switchMode(temp):
+    global mode, modes, switchProb, faultyMode
+
+    if not mode:
+        return temp
+
+    # see if the current mode priority is less than the randomly generated mode
+    currentModePriority = modes.index(mode)
+
+    switchpriority = 0
+    if temp / switchProb < 1 / 3.0:
+        switchpriority = 3
+    elif temp / switchProb < 2 / 3.0:
+        switchpriority = 2
+    else:
+        switchpriority = 1
+
+    if currentModePriority >= switchpriority:
+        return 1
+    else:
+        return temp
 
 simtime=cfg.simtime 
 numAgents=cfg.numAgents 
@@ -620,6 +646,8 @@ while t <= simtime:  # or running:
     for i in range(len(agentList)):
         agent = agentList[i]
         pos = agent.getPos()
+        #random_switch_prob = np.random.rand()
+        #temp = switchMode(random_switch_prob) # ramdom switch between 3 modes
         temp = 1 if faultyMode else np.random.rand()
         # print(temp)
         if removeRemoraAction:
@@ -641,20 +669,23 @@ while t <= simtime:  # or running:
             if temp / switchProb < 1 / 3.0:
                 agent.dynamics = m1_stepHalfSpeed
                 explanation = reasons[0]
-                mode = modes[1]
+                mode = modes[3]
                 anomaly_count += 1
-                stop_ergodic_time = static_ergodic_time + 0.5 *static_ergodic_time
+                anomaly_history.append(mode)
+                stop_ergodic_time = static_ergodic_time + 0.7 *static_ergodic_time
             elif temp / switchProb < 2 / 3.0:
                 agent.dynamics = m1_stepDrift1
                 explanation = reasons[cfg.rvwProb < np.random.rand()]
                 mode = modes[2]
                 anomaly_count += 1
+                anomaly_history.append(mode)
                 stop_ergodic_time = static_ergodic_time + 0.5 *static_ergodic_time
             else:
                 agent.dynamics = m1_stepDrift2
                 explanation = reasons[cfg.rvwProb < np.random.rand()]
-                mode = modes[3]
+                mode = modes[1]
                 anomaly_count += 1
+                anomaly_history.append(mode)
                 stop_ergodic_time = static_ergodic_time + 0.5 *static_ergodic_time
 
         if (method == searchMethods[0]) and not searchMIDCAErgodic:
@@ -682,7 +713,6 @@ while t <= simtime:  # or running:
             # sc=x_range/5.0
             if (t - start_ergodic_time) > stop_ergodic_time:
                 searchMIDCAErgodic = False
-                searchComplete = True
             u = singleIntegratorErgodicControl(agent, updateGP, scale=sc, offsets=off)
             MidcaIntegrator(agent, updateGP)
             if u[0] == 0 and u[1] == 0:
@@ -781,7 +811,7 @@ plt.pause(0.00001)
 
 if cfg.logData:
     f = open(method + "log.txt", 'a')
-    f.write(str(t) + "," + str(agent.getPos()) + "," + str(latestMeas) + "," + str(anomaly_count) +"\n")
+    f.write(str(t) + "," + str(agent.getPos()) + "," + str(latestMeas) + "," + str(anomaly_count) + "," + str(anomaly_history) +"\n")
     f.close()
 print(str(t) + "," + str(agent.getPos()) + "," + str(latestMeas), ", max val: ", str(maxMeas) + ", anomaly count: ", str(anomaly_count))
 print('done')

@@ -125,6 +125,11 @@ class TagWorld():
         msg = self.sock.recv(2048)
         return msg.decode('utf-8')
 
+    def searchErgodicComplete(self):
+        self.sock.send(str.encode('searchErgodicComplete'))
+        msg = self.sock.recv(2048)
+        return msg.decode('utf-8')
+
     def get_tags(self, position):
         try:
             msg = "get_tags," + str(position[0]+1) + "," + str(position[1]+1)
