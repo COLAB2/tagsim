@@ -68,7 +68,7 @@ def find_max_7_values_avg_measurement(time, data):
       
       
 def MidcaIntegrator(agent,update):
-    global running, searchComplete, wp_list, E, det_count, agentList, off, sc, searchMIDCAErgodic
+    global running, searchComplete, wp_list, E, det_count, agentList, off, sc, searchMIDCAErgodic, start_ergodic_time
     run = True
     # accept connections from outside
     (clientsocket, address) = midcasock.accept()

@@ -29,7 +29,7 @@ RRDR=.9 #remora removal decay rate (remora removal success multiplied by this co
 RSDR=.9 #remora speed decay rate (speed multiplied by this constant every time remora attacks)
 time_step=.5 #simulation time step
 downTime = 20/time_step #number of simulation steps you stay still after remora removal action
-rng_seed = None #random seed number
+rng_seed = 555 #random seed number
 #start_pos=(.95*x_range,.9*y_range)#(.05*x_range,.1*y_range)#
 
 start_pos = [(4.361675414742551382e+00, 1.458277069766090328e+01),
@@ -71,7 +71,7 @@ start_pos = [(4.361675414742551382e+00, 1.458277069766090328e+01),
             (17.25, 18.25), (19.25, 3.25), (15.25, 8.25), (9.25, 10.25), (2.25, 1.25)
             ]
 """
-show_only_when_pinging=True
+show_only_when_pinging=False
 stopOnMax = True
 visualize = True
 logData=False
