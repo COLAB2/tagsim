@@ -68,7 +68,7 @@ def find_max_7_values_avg_measurement(time, data):
       
       
 def MidcaIntegrator(agent,update):
-    global running, searchComplete, wp_list, E, det_count, agentList, off, sc, searchMIDCAErgodic, start_ergodic_time
+    global running, searchComplete, wp_list, E, det_count, agentList, off, sc, searchMIDCAErgodic, start_ergodic_time, removeRemoraAction
     run = True
     # accept connections from outside
     (clientsocket, address) = midcasock.accept()
@@ -140,6 +140,19 @@ def MidcaIntegrator(agent,update):
 
     elif cmd[0] == 'searchComplete':
         clientsocket.send(str.encode(str(searchComplete)))
+
+    elif cmd[0] == 'getMode':
+        clientsocket.send(str.encode(str(mode)))
+
+    elif cmd[0] == 'removeRemora':
+        removeRemoraAction = True
+
+    elif cmd[0] == 'removeRemoraStatus':
+        if removeRemoraAction == True:
+            clientsocket.send(str.encode(str(False)))
+        else:
+            clientsocket.send(str.encode(str(True)))
+
 
     elif cmd[0] == 'get_tags':
         agent = agentList[0]
@@ -562,11 +575,14 @@ for i in range(numAgents):
 # create an INET, STREAMing socket
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 midcasock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+midcasock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 if method == searchMethods[2] :
     # connect to ergodic controller
     sock.connect(cfg.ErgodicSocketInfo)
     sock.send(str.encode(str(x_range)))
-
+    if anomaly_handling_method == "MIDCA":
+        midcasock.bind(('127.0.0.1', 5700))
+        midcasock.listen(5)
 
 
 if method == searchMethods[0] :
@@ -789,8 +805,8 @@ plt.draw()
 plt.pause(0.00001)
 
 if cfg.logData:
-    f=open(method+"log.txt",'a')
-    f.write(str(t)+","+str(agent.getPos())+","+str(latestMeas)+"\n")
+    f = open(method + "log.txt", 'a')
+    f.write(str(t) + "," + str(agent.getPos()) + "," + str(latestMeas) + "," + str(anomaly_count) + "," + str(anomaly_history) +"\n")
     f.close()
 print(str(t)+","+str(agent.getPos())+","+str(latestMeas),", max val: ",maxMeas)
 print('done')
