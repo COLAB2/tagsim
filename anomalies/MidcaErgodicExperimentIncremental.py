@@ -644,7 +644,7 @@ while t<=simtime:#or running:
         if temp<switchProb:
             faultyMode = True
             agent.remoraAttacks+=1
-            if temp/switchProb<1/3.0:
+            if True:#temp/switchProb<1/3.0:
                 agent.removalSuccessMultiplier=agent.removalSuccessMultiplier*cfg.RRDR
                 agent.speedMultiplier=agent.speedMultiplier*cfg.RSDR
                 explanation.add(reasons[0])
@@ -731,8 +731,6 @@ while t<=simtime:#or running:
             if latestMeas >= fieldMax[0][2]:
                 endSim = True
             print(t,latestMeas)
-            #if latestMeas >= fieldMax[0][2]:
-             #   endSim=True
             # to stop in cell
             #pos = agent.getPos()
             #myx, myy = E.getCellXY(pos[0], pos[1])
