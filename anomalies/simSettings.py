@@ -6,7 +6,7 @@ density_map = np.array([0.1, 0.1, 0.4, 0.3, 0.2,
             0.3, 0.9, 0.3, 0.2, 0.1,
             0.2, 0.3, 0.2, 0.1, 0.1])
 #################################### simulation settings   ###################################
-ErgodicSocketInfo=('localhost', 8080)#('localhost', 5701)
+ErgodicSocketInfo=('localhost', 5701)#('localhost', 8080)
 MidcaSocketInfo=('127.0.0.1', 5700)
 #N = 500 #how many tags present
 simtime=600 #max simulation time
@@ -25,11 +25,12 @@ measurement_time = 2.0 #time used for estimating poisoon rate parameter
 switchProb=1/100.0 #mode switch probability
 rvwProb=100/100.0 #remora vs wing loss probability (higher means remora attack more likely)
 remoraRemovalSuccess=1
-RRDR=.9 #remora removal decay rate (remora removal success multiplied by this constant every time remora attacks)
-RSDR=.9 #remora speed decay rate (speed multiplied by this constant every time remora attacks)
+RRDR=1 #remora removal decay rate (remora removal success multiplied by this constant every time remora attacks)
+RSDR=.5 #remora speed decay rate (speed multiplied by this constant every time remora attacks)
 time_step=.5 #simulation time step
-downTime = 5/time_step #number of simulation steps you stay still after remora removal action
-rng_seed = 555 #random seed number
+downTime = 2.5/time_step #number of simulation steps you stay still after remora removal action
+#rng_seed = 555 #random seed number (first seed until 10/16/2020)
+rng_seed = 200
 #start_pos=(.95*x_range,.9*y_range)#(.05*x_range,.1*y_range)#
 
 start_pos = [(4.361675414742551382e+00, 1.458277069766090328e+01),
@@ -40,8 +41,7 @@ start_pos = [(4.361675414742551382e+00, 1.458277069766090328e+01),
              (1.510704267728113237e+01, 1.783478215173388648e+01),
              (2.204755346558018303e-01, 6.173268062869025741e+00),
              (4.958469349586305697e+00, 4.716507947006558510e+00),
-             (1.479491107030286301e+01, 1.459564048874953457e+01)]
-"""
+             (1.479491107030286301e+01, 1.459564048874953457e+01),
              (3.171471926407209985e+00, 1.005076470181938575e+01),
              (1.234584097168078287e+01, 6.461087057506860631e+00),
              (1.067132595610898349e+01, 1.024013704378120160e+01),
@@ -70,7 +70,7 @@ start_pos = [(4.361675414742551382e+00, 1.458277069766090328e+01),
             (16.25, 0.25), (16.25, 4.25), (16.25, 8.25), (16.25, 12.25), (16.25, 16.25),
             (17.25, 18.25), (19.25, 3.25), (15.25, 8.25), (9.25, 10.25), (2.25, 1.25)
             ]
-"""
+
 show_only_when_pinging=False
 stopOnMax = True
 visualize = True

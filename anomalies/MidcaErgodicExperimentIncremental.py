@@ -29,6 +29,7 @@ stop_ergodic_time = None
 static_ergodic_time = 18
 anomaly_count = 0
 anomaly_history = []
+anomaly_time_history = []
 
 def find_max_5_values_avg(time):
     a = {}
@@ -403,6 +404,7 @@ def singleIntegratorErgodicControl(agent,update,scale=None,offsets=None):
     if scale!=None:
         if current_scale != scale:
             sock.send(str.encode("change_scale "+str(scale)))
+            time.sleep(0.1)
             sock.send(str.encode("change_scale " + str(scale)))
             confirm= sock.recv(1024)
             current_scale = scale if "confirm" in confirm.decode('utf-8') else x_range
@@ -651,6 +653,7 @@ while t<=simtime:#or running:
                 mode = modes[3]
                 anomaly_count += 1
                 anomaly_history.append(mode)
+                anomaly_time_history.append(t)
                 stop_ergodic_time = static_ergodic_time + 0.7 *static_ergodic_time
 
             elif temp/switchProb<2/3.0:
@@ -663,6 +666,7 @@ while t<=simtime:#or running:
                 mode = modes[2]
                 anomaly_count += 1
                 anomaly_history.append(mode)
+                anomaly_time_history.append(t)
                 stop_ergodic_time = static_ergodic_time + 0.5 *static_ergodic_time
 
             else:
@@ -675,6 +679,7 @@ while t<=simtime:#or running:
                 mode = modes[1]
                 anomaly_count += 1
                 anomaly_history.append(mode)
+                anomaly_time_history.append(t)
                 stop_ergodic_time = static_ergodic_time + 0.5 *static_ergodic_time
             print(t,"explanation set: ",explanation,", ",agent.remoraAttacks," attacks, speedMultiplier: ",agent.speedMultiplier, ", removal success probability: ",agent.removalSuccessMultiplier*removalRate)
         if (method==searchMethods[0]) and not searchMIDCAErgodic:
@@ -804,7 +809,7 @@ plt.pause(0.00001)
 
 if cfg.logData:
     f = open(method + "log.txt", 'a')
-    f.write(str(t) + "," + str(agent.getPos()) + "," + str(latestMeas) + "," + str(anomaly_count) + "," + str(anomaly_history) +"\n")
+    f.write(str(t) + "," + str(agent.getPos()) + "," + str(latestMeas) + "," + str(anomaly_count) + "," + str(anomaly_history) + "," + str(anomaly_time_history) +"\n")
     f.close()
 print(str(t)+","+str(agent.getPos())+","+str(latestMeas),", max val: ",maxMeas)
 print('done')

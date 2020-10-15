@@ -403,6 +403,7 @@ def singleIntegratorErgodicControl(agent,update,scale=None,offsets=None):
     if scale!=None:
         if current_scale != scale:
             sock.send(str.encode("change_scale "+str(scale)))
+            time.sleep(1)
             sock.send(str.encode("change_scale " + str(scale)))
             confirm= sock.recv(1024)
             current_scale = scale if "confirm" in confirm.decode('utf-8') else x_range
